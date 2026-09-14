@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>hmm-forge · 隐马尔可夫模型实验室</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --line:#e4e7ec; --line2:#eef0f4;
+    --fg:#1f2328; --fg2:#5b6472; --fg3:#8b95a3;
+    --blue:#2563eb; --blue-w:#eaf1ff; --red:#d92d20; --green:#067647; --amber:#b54708;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:14px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 64px}
+  header h1{margin:0 0 6px;font-size:24px;letter-spacing:.3px}
+  header p{margin:0 0 22px;color:var(--fg2);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+  .card h2{margin:0 0 4px;font-size:15px}
+  .card .sub{margin:0 0 14px;color:var(--fg3);font-size:12px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input[type=text]{flex:1;min-width:260px;padding:9px 11px;border:1px solid var(--line);border-radius:7px;
+    background:#fff;color:var(--fg);font:14px ui-monospace,Menlo,Consolas,monospace}
+  input[type=text]:focus{outline:2px solid var(--blue-w);border-color:var(--blue)}
+  button{padding:8px 14px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--fg);
+    font-size:13px;cursor:pointer}
+  button:hover{border-color:var(--blue);color:var(--blue)}
+  button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  button.primary:hover{filter:brightness(1.06);color:#fff}
+  .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;border:1px solid var(--line);color:var(--fg2);cursor:pointer;margin-right:6px}
+  .pill:hover{border-color:var(--blue);color:var(--blue)}
+  .kv{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px}
+  .kv div{font-size:12px;color:var(--fg3)}
+  .kv b{display:block;font:600 16px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--fg)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:6px}
+  .tok{text-align:center;min-width:64px}
+  .tok .w{font:14px ui-monospace,Menlo,Consolas,monospace}
+  .tok .s{margin-top:4px;padding:2px 8px;border-radius:6px;font-size:12px;background:var(--blue-w);
+    color:var(--blue);border:1px solid #c9dcff;display:inline-block}
+  .sc{display:grid;gap:4px;overflow-x:auto}
+  .sc .h{font:11px ui-monospace,Menlo,Consolas,monospace;color:var(--fg3);text-align:center}
+  .sc .lbl{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg2);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}
+  .cell{border:1px solid var(--line2);border-radius:5px;padding:5px 2px;text-align:center;
+    font:11px ui-monospace,Menlo,Consolas,monospace;color:var(--fg2);background:#fbfcfd}
+  .cell.best{border-color:var(--blue);background:var(--blue-w);color:var(--blue);font-weight:600;box-shadow:0 0 0 2px #dbe8ff inset}
+  .bar{display:flex;height:12px;border-radius:3px;overflow:hidden;background:var(--line2);margin-top:3px}
+  .bar i{display:block;height:100%}
+  table{border-collapse:collapse;font:11px ui-monospace,Menlo,Consolas,monospace}
+  td,th{padding:3px 6px;text-align:right;white-space:nowrap}
+  thead th{color:var(--fg3);font-weight:500}
+  tbody th{color:var(--fg2);font-weight:500;text-align:right}
+  .heat{border-radius:3px}
+  .mono{font:12px ui-monospace,Menlo,Consolas,monospace}
+  .note{color:var(--fg3);font-size:12px;margin-top:10px}
+  table.chk{width:100%;font:13px/1.5 -apple-system,"Segoe UI","PingFang SC",sans-serif}
+  table.chk td{text-align:left;white-space:normal;padding:8px 8px;border-bottom:1px solid var(--line2);vertical-align:top}
+  table.chk td.d{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg2);width:290px}
+  table.chk td.s{width:72px}
+  .ok{color:var(--green);font-weight:600}
+  .bad{color:var(--red);font-weight:600}
+  .banner{padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;
+    background:#ecfdf3;border:1px solid #abefc6;color:var(--green)}
+  .banner.bad{background:#fef3f2;border-color:#fecdca;color:var(--red)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:860px){.cols{grid-template-columns:1fr}}
+  canvas{width:100%;height:170px;display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>hmm-forge</h1>
+  <p>隐马尔可夫模型实验室 · 前向-后向 / Viterbi / Baum-Welch EM · 零依赖单文件 · 8 条不变量浏览器内一键自检</p>
+</header>
+
+<div class="card">
+  <h2>词性标注解码（Viterbi）</h2>
+  <p class="sub">隐状态 = 词性，观测 = 单词。输入句子后解码出最可能的词性序列。</p>
+  <div class="row">
+    <input type="text" id="sent" value="the dog runs quickly" spellcheck="false">
+    <button class="primary" id="btn-dec">解码</button>
+    <button id="btn-sample">随机采样</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <span class="pill" data-s="the dog runs quickly">the dog runs quickly</span>
+    <span class="pill" data-s="I like the big cat">I like the big cat</span>
+    <span class="pill" data-s="the small bird sings slowly">the small bird sings slowly</span>
+    <span class="pill" data-s="a big dog jumps">a big dog jumps</span>
+  </div>
+  <div class="kv" id="stat"></div>
+  <div id="chips" class="chips"></div>
+  <p class="note" id="vocabnote"></p>
+</div>
+
+<div class="card">
+  <h2>Viterbi Trellis（δ 对数域）</h2>
+  <p class="sub">行 = 隐状态，列 = 时刻；高亮格为最优路径，格内为 log δ。</p>
+  <div id="trellis" class="sc"></div>
+</div>
+
+<div class="card">
+  <h2>后验边缘 γ<sub>t</sub>(i) = P(q<sub>t</sub>=i | O, λ)</h2>
+  <p class="sub">前向-后向算法给出每个时刻的状态后验；每段颜色对应一个词性，长度 = 后验概率。</p>
+  <div id="post"></div>
+</div>
+
+<div class="cols">
+  <div class="card">
+    <h2>转移矩阵 A</h2>
+    <p class="sub">P(q<sub>t+1</sub>=j | q<sub>t</sub>=i)</p>
+    <div style="overflow-x:auto" id="matA"></div>
+  </div>
+  <div class="card">
+    <h2>发射矩阵 B</h2>
+    <p class="sub">P(o<sub>t</sub>=v | q<sub>t</sub>=i)，列 = <span id="bscope">当前句子的词</span></p>
+    <div style="overflow-x:auto" id="matB"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Baum-Welch 参数还原</h2>
+  <p class="sub">用真模型采样 3000 个观测作为语料 → 随机初始化 → EM 训练 200 轮。EM 定理保证对数似然单调非减。<br>
+  注意：HMM 的状态标签只在「置换等价」意义下可识别（见不变量 8），训练出的状态编号会与真值错序，这是正常现象。</p>
+  <div class="row">
+    <button class="primary" id="btn-bw">运行 EM（200 轮）</button>
+    <span class="mono" id="bwinfo" style="color:var(--fg2)"></span>
+  </div>
+  <canvas id="cv" height="170"></canvas>
+  <div class="kv" id="bwstat"></div>
+</div>
+
+<div class="card">
+  <h2>不变量自检</h2>
+  <p class="sub">全部在浏览器内实时计算，与无头 Node 断言同一份 engine 代码。</p>
+  <div id="banner"></div>
+  <table class="chk"><tbody id="chk"></tbody></table>
+</div>
+</div>
+
+<script id="engine">
+(function () {
+  'use strict';
+  var LOGZERO = -1e300;
+
+  function logsumexp(a) {
+    var m = -Infinity, i;
+    for (i = 0; i < a.length; i++) if (a[i] > m) m = a[i];
+    if (m === -Infinity) return LOGZERO;
+    if (m === Infinity) return Infinity;
+    var s = 0;
+    for (i = 0; i < a.length; i++) s += Math.exp(a[i] - m);
+    return m + Math.log(s);
+  }
+  function safelog(p) { return (p > 0 && isFinite(p)) ? Math.log(p) : LOGZERO; }
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function logArrays(m) {
+    var N = m.N, i, j, lpi = new Array(N), lA = new Array(N), lB = new Array(N);
+    for (i = 0; i < N; i++) {
+      lpi[i] = safelog(m.pi[i]);
+      lA[i] = new Array(N); lB[i] = new Array(m.M);
+      for (j = 0; j < N; j++) lA[i][j] = safelog(m.A[i][j]);
+      for (j = 0; j < m.M; j++) lB[i][j] = safelog(m.B[i][j]);
+    }
+    return { lpi: lpi, lA: lA, lB: lB };
+  }
+
+  // ---------- 前向（对数域，抗下溢） ----------
+  function logForward(m, obs) {
+    var N = m.N, T = obs.length, L = logArrays(m), i, j, t, tmp;
+    if (T === 0) return { logalpha: [], loglik: 0 };
+    var la = new Array(T);
+    la[0] = new Array(N);
+    for (i = 0; i < N; i++) la[0][i] = L.lpi[i] + L.lB[i][obs[0]];
+    for (t = 1; t < T; t++) {
+      la[t] = new Array(N);
+      for (j = 0; j < N; j++) {
+        tmp = new Array(N);
+        for (i = 0; i < N; i++) tmp[i] = la[t - 1][i] + L.lA[i][j];
+        la[t][j] = logsumexp(tmp) + L.lB[j][obs[t]];
+      }
+    }
+    return { logalpha: la, loglik: logsumexp(la[T - 1]) };
+  }
+
+  // ---------- 后向（对数域） ----------
+  function logBackward(m, obs) {
+    var N = m.N, T = obs.length, L = logArrays(m), i, j, t, tmp;
+    if (T === 0) return { logbeta: [], loglik: 0 };
+    var lb = new Array(T);
+    lb[T - 1] = new Array(N);
+    for (i = 0; i < N; i++) lb[T - 1][i] = 0;
+    for (t = T - 2; t >= 0; t--) {
+      lb[t] = new Array(N);
+      for (i = 0; i < N; i++) {
+        tmp = new Array(N);
+        for (j = 0; j < N; j++) tmp[j] = L.lA[i][j] + L.lB[j][obs[t + 1]] + lb[t + 1][j];
+        lb[t][i] = logsumexp(tmp);
+      }
+    }
+    var ll = new Array(N);
+    for (i = 0; i < N; i++) ll[i] = L.lpi[i] + L.lB[i][obs[0]] + lb[0][i];
+    return { logbeta: lb, loglik: logsumexp(ll) };
+  }
+
+  // ---------- 前向（朴素概率域，仅用于交叉验证） ----------
+  function forward(m, obs) {
+    var N = m.N, T = obs.length, i, j, t, s, a;
+    if (T === 0) return { alpha: [], lik: 1 };
+    a = new Array(T);
+    a[0] = new Array(N);
+    for (i = 0; i < N; i++) a[0][i] = m.pi[i] * m.B[i][obs[0]];
+    for (t = 1; t < T; t++) {
+      a[t] = new Array(N);
+      for (j = 0; j < N; j++) {
+        s = 0;
+        for (i = 0; i < N; i++) s += a[t - 1][i] * m.A[i][j];
+        a[t][j] = s * m.B[j][obs[t]];
+      }
+    }
+    s = 0;
+    for (i = 0; i < N; i++) s += a[T - 1][i];
+    return { alpha: a, lik: s };
+  }
+
+  // ---------- 暴力枚举全部 N^T 条路径 ----------
+  function bruteForce(m, obs) {
+    var N = m.N, T = obs.length, i, t;
+    var sum = 0, best = -1, bestPath = null, path = new Array(T);
+    function rec(t, p) {
+      if (t === T) { sum += p; if (p > best) { best = p; bestPath = path.slice(); } return; }
+      for (var k = 0; k < N; k++) {
+        var q = p * (t === 0 ? m.pi[k] : m.A[path[t - 1]][k]) * m.B[k][obs[t]];
+        path[t] = k; rec(t + 1, q);
+      }
+    }
+    rec(0, 1);
+    return { lik: sum, bestProb: best, bestPath: bestPath };
+  }
+
+  // ---------- Viterbi（对数域） ----------
+  function viterbi(m, obs) {
+    var N = m.N, T = obs.length, L = logArrays(m), i, j, t, v, bv, bi;
+    if (T === 0) return { path: [], logprob: 0, delta: [], psi: [] };
+    var delta = new Array(T), psi = new Array(T);
+    delta[0] = new Array(N); psi[0] = new Array(N);
+    for (i = 0; i < N; i++) { delta[0][i] = L.lpi[i] + L.lB[i][obs[0]]; psi[0][i] = -1; }
+    for (t = 1; t < T; t++) {
+      delta[t] = new Array(N); psi[t] = new Array(N);
+      for (j = 0; j < N; j++) {
+        bv = -Infinity; bi = 0;
+        for (i = 0; i < N; i++) { v = delta[t - 1][i] + L.lA[i][j]; if (v > bv) { bv = v; bi = i; } }
+        delta[t][j] = bv + L.lB[j][obs[t]]; psi[t][j] = bi;
+      }
+    }
+    var last = 0, bj = -Infinity;
+    for (i = 0; i < N; i++) if (delta[T - 1][i] > bj) { bj = delta[T - 1][i]; last = i; }
+    var path = new Array(T); path[T - 1] = last;
+    for (t = T - 1; t >= 1; t--) path[t - 1] = psi[t][path[t]];
+    return { path: path, logprob: bj, delta: delta, psi: psi };
+  }
+
+  function manualPathLogProb(m, obs, path) {
+    var L = logArrays(m), T = obs.length, t;
+    if (T === 0) return 0;
+    var s = L.lpi[path[0]] + L.lB[path[0]][obs[0]];
+    for (t = 1; t < T; t++) s += L.lA[path[t - 1]][path[t]] + L.lB[path[t]][obs[t]];
+    return s;
+  }
+
+  // ---------- 后验：γ 与 ξ ----------
+  function posteriors(m, obs) {
+    var N = m.N, T = obs.length, L = logArrays(m), i, j, t;
+    if (T === 0) return { gamma: [], xi: [], loglik: 0 };
+    var F = logForward(m, obs), B = logBackward(m, obs), ll = F.loglik;
+    var gamma = new Array(T), xi = new Array(T - 1);
+    for (t = 0; t < T; t++) {
+      gamma[t] = new Array(N);
+      for (i = 0; i < N; i++) gamma[t][i] = Math.exp(F.logalpha[t][i] + B.logbeta[t][i] - ll);
+    }
+    for (t = 0; t < T - 1; t++) {
+      xi[t] = new Array(N);
+      for (i = 0; i < N; i++) {
+        xi[t][i] = new Array(N);
+        for (j = 0; j < N; j++)
+          xi[t][i][j] = Math.exp(F.logalpha[t][i] + L.lA[i][j] + L.lB[j][obs[t + 1]] + B.logbeta[t + 1][j] - ll);
+      }
+    }
+    return { gamma: gamma, xi: xi, loglik: ll };
+  }
+
+  // ---------- 模型工具 ----------
+  function normRow(v) {
+    var s = 0, i;
+    for (i = 0; i < v.length; i++) s += v[i];
+    if (s <= 0) { for (i = 0; i < v.length; i++) v[i] = 1 / v.length; return v; }
+    for (i = 0; i < v.length; i++) v[i] /= s;
+    return v;
+  }
+  function randomModel(N, M, rng) {
+    var i, j, pi = new Array(N), A = new Array(N), B = new Array(N);
+    for (i = 0; i < N; i++) pi[i] = 0.2 + rng();
+    normRow(pi);
+    for (i = 0; i < N; i++) { A[i] = new Array(N); for (j = 0; j < N; j++) A[i][j] = 0.2 + rng(); normRow(A[i]); }
+    for (i = 0; i < N; i++) { B[i] = new Array(M); for (j = 0; j < M; j++) B[i][j] = 0.2 + rng(); normRow(B[i]); }
+    return { N: N, M: M, pi: pi, A: A, B: B };
+  }
+  function cloneModel(m) {
+    var i, pi = m.pi.slice(), A = new Array(m.N), B = new Array(m.N);
+    for (i = 0; i < m.N; i++) { A[i] = m.A[i].slice(); B[i] = m.B[i].slice(); }
+    return { N: m.N, M: m.M, pi: pi, A: A, B: B };
+  }
+  function floorModel(m, f) {
+    var i, j, r = cloneModel(m);
+    for (i = 0; i < r.N; i++) {
+      if (r.pi[i] < f) r.pi[i] = f;
+      for (j = 0; j < r.N; j++) if (r.A[i][j] < f) r.A[i][j] = f;
+      for (j = 0; j < r.M; j++) if (r.B[i][j] < f) r.B[i][j] = f;
+    }
+    normRow(r.pi);
+    for (i = 0; i < r.N; i++) { normRow(r.A[i]); normRow(r.B[i]); }
+    return r;
+  }
+  function permuteModel(m, perm) {
+    var i, j, N = m.N, r = { N: N, M: m.M, pi: new Array(N), A: new Array(N), B: new Array(N) };
+    for (i = 0; i < N; i++) {
+      r.pi[i] = m.pi[perm[i]];
+      r.B[i] = m.B[perm[i]].slice();
+      r.A[i] = new Array(N);
+      for (j = 0; j < N; j++) r.A[i][j] = m.A[perm[i]][perm[j]];
+    }
+    return r;
+  }
+  function sample(m, T, rng) {
+    var i, s, u, r, cum, states = new Array(T), obs = new Array(T);
+    u = rng(); cum = 0; s = 0;
+    for (i = 0; i < m.N; i++) { cum += m.pi[i]; if (u < cum) { s = i; break; } s = m.N - 1; }
+    for (var t = 0; t < T; t++) {
+      states[t] = s;
+      u = rng(); cum = 0; obs[t] = m.M - 1;
+      for (i = 0; i < m.M; i++) { cum += m.B[s][i]; if (u < cum) { obs[t] = i; break; } }
+      if (t === T - 1) break;
+      u = rng(); cum = 0; r = m.N - 1;
+      for (i = 0; i < m.N; i++) { cum += m.A[s][i]; if (u < cum) { r = i; break; } }
+      s = r;
+    }
+    return { states: states, obs: obs };
+  }
+
+  // ---------- Baum-Welch（EM） ----------
+  function baumWelch(obs, N, M, opts) {
+    opts = opts || {};
+    var iters = opts.iters || 30, tol = opts.tol || 1e-9, fl = opts.floor === undefined ? 1e-7 : opts.floor;
+    var m = opts.model ? cloneModel(opts.model) : randomModel(N, M, opts.rng || mulberry32(1));
+    var hist = [logForward(m, obs).loglik], k, i, j, t, v;
+    for (k = 0; k < iters; k++) {
+      var P = posteriors(m, obs), T = obs.length;
+      var pi = new Array(N), A = new Array(N), B = new Array(N);
+      for (i = 0; i < N; i++) pi[i] = T > 0 ? P.gamma[0][i] : 1 / N;
+      for (i = 0; i < N; i++) {
+        A[i] = new Array(N);
+        var den = 0; for (t = 0; t < T - 1; t++) den += P.gamma[t][i];
+        for (j = 0; j < N; j++) {
+          var num = 0; for (t = 0; t < T - 1; t++) num += P.xi[t][i][j];
+          A[i][j] = den > 0 ? num / den : (i === j ? 1 : 0);
+        }
+      }
+      for (i = 0; i < N; i++) {
+        B[i] = new Array(M);
+        var d2 = 0; for (t = 0; t < T; t++) d2 += P.gamma[t][i];
+        var cnt = new Array(M); for (v = 0; v < M; v++) cnt[v] = 0;
+        for (t = 0; t < T; t++) cnt[obs[t]] += P.gamma[t][i];
+        for (v = 0; v < M; v++) B[i][v] = d2 > 0 ? cnt[v] / d2 : 1 / M;
+      }
+      m = floorModel({ N: N, M: M, pi: pi, A: A, B: B }, fl);
+      hist.push(logForward(m, obs).loglik);
+      if (Math.abs(hist[hist.length - 1] - hist[hist.length - 2]) < tol) break;
+    }
+    return { model: m, loglikHist: hist, iters: hist.length - 1 };
+  }
+
+  // ---------- 8 条不变量 ----------
+  function selfTest() {
+    var out = [], rng = mulberry32(20240914), i, j, t, m, obs;
+    function add(name, detail, pass) { out.push({ name: name, detail: detail, pass: !!pass }); }
+
+    // 1 前向 == 后向
+    m = randomModel(4, 5, rng); obs = sample(m, 12, rng).obs;
+    var lf = logForward(m, obs).loglik, lb = logBackward(m, obs).loglik;
+    add('前向似然 == 后向似然（同一观测序列）', 'Δ = ' + Math.abs(lf - lb).toExponential(2), Math.abs(lf - lb) < 1e-9);
+
+    // 2 前向 == 暴力枚举 N^T
+    var m2 = randomModel(3, 4, rng), o2 = sample(m2, 7, rng).obs;
+    var f2 = forward(m2, o2).lik, b2 = bruteForce(m2, o2).lik;
+    var rel2 = Math.abs(f2 - b2) / Math.abs(b2);
+    add('前向 == 暴力枚举 3⁷=2187 条路径求和', 'rel = ' + rel2.toExponential(2), rel2 < 1e-12);
+
+    // 3 Viterbi == 暴力枚举最优
+    var v3 = viterbi(m2, o2), bf3 = bruteForce(m2, o2);
+    var rel3 = Math.abs(Math.exp(v3.logprob) - bf3.bestProb) / bf3.bestProb;
+    var same = v3.path.join(',') === bf3.bestPath.join(',');
+    // 并列最优：两条路径概率相同（1e-12 内）时，打破平局的方式允许不同
+    var tie = same || Math.abs(manualPathLogProb(m2, o2, bf3.bestPath) - v3.logprob) < 1e-9;
+    add('Viterbi == 暴力枚举最优路径（概率+路径）',
+        'rel = ' + rel3.toExponential(2) + '，' + (same ? '路径一致' : (tie ? '并列最优（平局）' : '路径不一致')),
+        rel3 < 1e-12 && tie);
+
+    // 4 路径概率重算
+    var man = manualPathLogProb(m2, o2, v3.path);
+    add('Viterbi 对数概率 == 沿路径逐项重算', 'Δ = ' + Math.abs(man - v3.logprob).toExponential(2),
+        Math.abs(man - v3.logprob) < 1e-10);
+
+    // 5 EM 单调
+    var m3 = randomModel(3, 5, rng), o3 = sample(m3, 400, rng).obs;
+    var bw = baumWelch(o3, 3, 5, { iters: 25, model: randomModel(3, 5, rng), floor: 1e-6 });
+    var minD = Infinity;
+    for (i = 1; i < bw.loglikHist.length; i++) minD = Math.min(minD, bw.loglikHist[i] - bw.loglikHist[i - 1]);
+    // 真值模型是 EM 的不动点：从真值出发跑 1 步，LL 不得下降
+    var oneStep = baumWelch(o3, 3, 5, { iters: 1, model: m3, floor: 1e-12 });
+    var dStep = oneStep.loglikHist[1] - oneStep.loglikHist[0];
+    add('Baum-Welch 对数似然单调非减（EM 定理）',
+        'min Δ = ' + minD.toExponential(2) + '（' + bw.iters + ' 轮）；真值起点 1 步 Δ = ' + dStep.toExponential(2),
+        minD > -1e-7 && dStep > -1e-9);
+
+    // 6 γ / ξ 一致性
+    var P6 = posteriors(m, obs), T6 = obs.length, eG = 0, eX = 0;
+    for (t = 0; t < T6; t++) {
+      var s1 = 0; for (i = 0; i < m.N; i++) s1 += P6.gamma[t][i];
+      eG = Math.max(eG, Math.abs(s1 - 1));
+      if (t < T6 - 1) for (i = 0; i < m.N; i++) {
+        var s2 = 0; for (j = 0; j < m.N; j++) s2 += P6.xi[t][i][j];
+        eX = Math.max(eX, Math.abs(s2 - P6.gamma[t][i]));
+      }
+    }
+    add('Σᵢ γₜ(i)=1 且 Σⱼ ξₜ(i,j)=γₜ(i)', 'maxErr(γ) = ' + eG.toExponential(2) + '，maxErr(ξ) = ' + eX.toExponential(2),
+        Math.max(eG, eX) < 1e-10);
+
+    // 7 对数域抗下溢
+    var m7 = randomModel(4, 6, rng), o7 = sample(m7, 400, rng).obs;
+    var naive7 = forward(m7, o7).lik, log7 = logForward(m7, o7).loglik;
+    var o7s = sample(m7, 10, rng).obs;
+    var d7s = Math.abs(Math.log(forward(m7, o7s).lik) - logForward(m7, o7s).loglik);
+    add('对数域 vs 朴素概率域（T=10 一致 / T=400 朴素已下溢）',
+        'T=10 Δ = ' + d7s.toExponential(2) + '；T=400 朴素 P(O) = ' + naive7.toExponential(2) +
+        '，log P(O) = ' + log7.toFixed(2),
+        d7s < 1e-9 && naive7 < 1e-300 && isFinite(log7) && log7 < 0);
+
+    // 8 标签置换不变
+    var perm = [2, 0, 3, 1], mp = permuteModel(m, perm);
+    var d8 = Math.abs(logForward(m, obs).loglik - logForward(mp, obs).loglik);
+    add('状态标签置换不变（等变性）', 'Δ = ' + d8.toExponential(2), d8 < 1e-9);
+
+    return out;
+  }
+
+  globalThis.HMM = {
+    LOGZERO: LOGZERO, logsumexp: logsumexp, mulberry32: mulberry32,
+    logForward: logForward, logBackward: logBackward, forward: forward,
+    bruteForce: bruteForce, viterbi: viterbi, manualPathLogProb: manualPathLogProb,
+    posteriors: posteriors, randomModel: randomModel, cloneModel: cloneModel,
+    permuteModel: permuteModel, floorModel: floorModel, sample: sample,
+    baumWelch: baumWelch, selfTest: selfTest
+  };
+})();
+</script>
+
+<script id="ui">
+(function () {
+  if (typeof document === 'undefined') return;
+  var H = globalThis.HMM;
+  var STATES = ['Det', 'Noun', 'Verb', 'Adj', 'Adv'];
+  var COLORS = ['#2563eb', '#067647', '#b54708', '#7e22ce', '#0e7490'];
+
+  var VOCAB = ['the', 'a', 'dog', 'cat', 'bird', 'runs', 'jumps', 'sings', 'big', 'small',
+               'quickly', 'slowly', 'I', 'you', 'like', 'see'];
+
+  function rowOf(spec, M) {
+    var r = new Array(M), i, used = 0, rest = 0, n = 0;
+    for (i = 0; i < M; i++) {
+      if (spec[i] !== undefined) { r[i] = spec[i]; used += spec[i]; } else { r[i] = -1; n++; }
+    }
+    rest = Math.max(0, 1 - used);
+    for (i = 0; i < M; i++) if (r[i] < 0) r[i] = n > 0 ? rest / n : 0;
+    return r;
+  }
+  function idx(words) { var o = {}; for (var i = 0; i < words.length; i++) o[words[i]] = i; return o; }
+  var VI = idx(VOCAB);
+
+  function buildModel() {
+    var M = VOCAB.length, N = 5;
+    var pi = [0.35, 0.25, 0.15, 0.15, 0.10];
+    var A = [
+      rowOf({ 1: 0.75, 3: 0.20, 0: 0.05 }, N),
+      rowOf({ 2: 0.50, 4: 0.20, 1: 0.15, 3: 0.10, 0: 0.05 }, N),
+      rowOf({ 4: 0.35, 1: 0.30, 0: 0.25, 2: 0.05, 3: 0.05 }, N),
+      rowOf({ 1: 0.85, 3: 0.10, 2: 0.05 }, N),
+      rowOf({ 2: 0.50, 0: 0.25, 4: 0.15, 1: 0.05, 3: 0.05 }, N)
+    ];
+    var B = [
+      rowOf({ 0: 0.45, 1: 0.45 }, M),                                  // Det
+      rowOf({ 2: 0.22, 3: 0.22, 4: 0.22, 12: 0.12, 13: 0.12 }, M),      // Noun
+      rowOf({ 5: 0.24, 6: 0.24, 7: 0.24, 14: 0.13, 15: 0.13 }, M),      // Verb
+      rowOf({ 8: 0.40, 9: 0.40 }, M),                                   // Adj
+      rowOf({ 10: 0.40, 11: 0.40 }, M)                                  // Adv
+    ];
+    return { N: N, M: M, pi: pi, A: A, B: B };
+  }
+  var TRUE = buildModel();
+
+  // 未登录词：追加一列（各状态取该行均值），再归一化
+  function withWords(m, words) {
+    var extra = [], i, k, r = H.cloneModel(m);
+    for (i = 0; i < words.length; i++) if (VI[words[i]] === undefined && extra.indexOf(words[i]) < 0) extra.push(words[i]);
+    if (!extra.length) return { model: r, vocab: VOCAB.slice() };
+    var M2 = r.M + extra.length;
+    for (i = 0; i < r.N; i++) {
+      var mean = 0; for (k = 0; k < r.M; k++) mean += r.B[i][k]; mean /= r.M;
+      var nb = r.B[i].slice();
+      for (k = 0; k < extra.length; k++) nb.push(mean);
+      var s = 0; for (k = 0; k < M2; k++) s += nb[k];
+      for (k = 0; k < M2; k++) nb[k] /= s;
+      r.B[i] = nb;
+    }
+    r.M = M2;
+    return { model: r, vocab: VOCAB.concat(extra) };
+  }
+
+  var cur = null; // {model, vocab, obs, words, v, P}
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function f2(v) { return (v >= 0 ? '' : '') + v.toFixed(2); }
+
+  function decode() {
+    var raw = document.getElementById('sent').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!raw.length) return;
+    var w = withWords(TRUE, raw), vi = idx(w.vocab);
+    var obs = raw.map(function (x) { return vi[x]; });
+    var v = H.viterbi(w.model, obs), P = H.posteriors(w.model, obs);
+    cur = { model: w.model, vocab: w.vocab, obs: obs, words: raw, v: v, P: P };
+    renderStat(); renderChips(); renderTrellis(); renderPost(); renderMatrices();
+  }
+
+  function renderStat() {
+    var ll = H.logForward(cur.model, cur.obs).loglik;
+    var lb = H.logBackward(cur.model, cur.obs).loglik;
+    document.getElementById('stat').innerHTML =
+      '<div>log P(O | λ)<b>' + ll.toFixed(4) + '</b></div>' +
+      '<div>后向校验 Δ<b>' + Math.abs(ll - lb).toExponential(1) + '</b></div>' +
+      '<div>最优路径 log P<b>' + cur.v.logprob.toFixed(4) + '</b></div>' +
+      '<div>序列长度 T<b>' + cur.obs.length + '</b></div>' +
+      '<div>状态数 N / 词表 M<b>' + cur.model.N + ' / ' + cur.model.M + '</b></div>';
+    var unk = cur.words.filter(function (x) { return VI[x] === undefined; });
+    document.getElementById('vocabnote').textContent = unk.length
+      ? '未登录词（按均匀分布追加处理）：' + unk.join('、')
+      : '全部词均在词表内。';
+  }
+
+  function renderChips() {
+    var h = '';
+    for (var t = 0; t < cur.words.length; t++) {
+      var s = cur.v.path[t];
+      h += '<div class="tok"><div class="w">' + esc(cur.words[t]) + '</div>' +
+           '<div class="s" style="background:' + COLORS[s] + '18;color:' + COLORS[s] + ';border-color:' + COLORS[s] + '55">' +
+           STATES[s] + '</div></div>';
+    }
+    document.getElementById('chips').innerHTML = h;
+  }
+
+  function renderTrellis() {
+    var T = cur.obs.length, N = cur.model.N, d = cur.v.delta, t, i;
+    var mins = [], maxs = [];
+    for (t = 0; t < T; t++) {
+      var mn = Infinity, mx = -Infinity;
+      for (i = 0; i < N; i++) { mn = Math.min(mn, d[t][i]); mx = Math.max(mx, d[t][i]); }
+      mins.push(mn); maxs.push(mx);
+    }
+    var h = '<div class="sc" style="grid-template-columns:64px repeat(' + T + ',minmax(72px,1fr))">';
+    h += '<div></div>';
+    for (t = 0; t < T; t++) h += '<div class="h">' + esc(cur.words[t]) + '</div>';
+    for (i = 0; i < N; i++) {
+      h += '<div class="lbl" style="color:' + COLORS[i] + '">' + STATES[i] + '</div>';
+      for (t = 0; t < T; t++) {
+        var isBest = cur.v.path[t] === i;
+        var a = maxs[t] > mins[t] ? (d[t][i] - mins[t]) / (maxs[t] - mins[t]) : 1;
+        h += '<div class="cell' + (isBest ? ' best' : '') + '" style="background:' +
+             (isBest ? '#eaf1ff' : 'rgba(37,99,235,' + (0.04 + 0.10 * a).toFixed(3) + ')') + '">' +
+             f2(d[t][i]) + '</div>';
+      }
+    }
+    h += '</div>';
+    document.getElementById('trellis').innerHTML = h;
+  }
+
+  function renderPost() {
+    var T = cur.obs.length, N = cur.model.N, t, i, h = '';
+    for (t = 0; t < T; t++) {
+      h += '<div style="margin-bottom:8px"><div class="mono" style="color:var(--fg2)">t=' + t +
+           ' · <b>' + esc(cur.words[t]) + '</b></div><div class="bar">';
+      for (i = 0; i < N; i++) {
+        var p = cur.P.gamma[t][i];
+        h += '<i style="width:' + (p * 100).toFixed(2) + '%;background:' + COLORS[i] +
+             '" title="' + STATES[i] + ' ' + (p * 100).toFixed(1) + '%"></i>';
+      }
+      h += '</div><div class="mono" style="color:var(--fg3);font-size:11px">';
+      for (i = 0; i < N; i++) h += '<span style="color:' + COLORS[i] + '">' + STATES[i] + ' ' +
+        (cur.P.gamma[t][i] * 100).toFixed(0) + '%</span>&nbsp;&nbsp;';
+      h += '</div></div>';
+    }
+    document.getElementById('post').innerHTML = h;
+  }
+
+  function heat(v) {
+    var a = Math.min(1, Math.pow(Math.max(0, v), 0.55));
+    return 'background:rgba(37,99,235,' + (0.03 + 0.55 * a).toFixed(3) + ')';
+  }
+  function matHTML(head, rowLbl, rows) {
+    var h = '<table><thead><tr><th></th>';
+    for (var j = 0; j < head.length; j++) h += '<th>' + esc(head[j]) + '</th>';
+    h += '</tr></thead><tbody>';
+    for (var i = 0; i < rows.length; i++) {
+      h += '<tr><th style="color:' + COLORS[i % COLORS.length] + '">' + esc(rowLbl[i]) + '</th>';
+      for (j = 0; j < rows[i].length; j++)
+        h += '<td class="heat" style="' + heat(rows[i][j]) + '">' + rows[i][j].toFixed(3) + '</td>';
+      h += '</tr>';
+    }
+    return h + '</tbody></table>';
+  }
+  function renderMatrices() {
+    document.getElementById('matA').innerHTML =
+      matHTML(STATES, STATES, cur.model.A);
+    var cols = [], seen = {}, k, j;
+    for (k = 0; k < cur.words.length; k++) if (!seen[cur.words[k]]) { seen[cur.words[k]] = 1; cols.push(cur.words[k]); }
+    var vi = idx(cur.vocab), ci = cols.map(function (w) { return vi[w]; });
+    var B = cur.model.B.map(function (r) { return ci.map(function (c) { return r[c]; }); });
+    document.getElementById('matB').innerHTML = matHTML(cols, STATES, B);
+    document.getElementById('bscope').textContent = '当前句子的词（去重）';
+  }
+
+  // ---------- Baum-Welch 演示 ----------
+  var bwRes = null, bwTrueLL = 0;
+  function runBW() {
+    var rng = H.mulberry32(777);
+    var corpus = H.sample(TRUE, 3000, rng).obs;
+    var init = H.randomModel(TRUE.N, TRUE.M, rng);
+    bwRes = H.baumWelch(corpus, TRUE.N, TRUE.M, { iters: 200, model: init, floor: 1e-6 });
+    var trueLL = H.logForward(TRUE, corpus).loglik; bwTrueLL = trueLL;
+    var h0 = bwRes.loglikHist[0], hN = bwRes.loglikHist[bwRes.loglikHist.length - 1];
+    var minD = Infinity;
+    for (var i = 1; i < bwRes.loglikHist.length; i++)
+      minD = Math.min(minD, bwRes.loglikHist[i] - bwRes.loglikHist[i - 1]);
+    document.getElementById('bwinfo').textContent =
+      '语料 T=3000，EM ' + bwRes.iters + ' 轮，log P 从 ' + h0.toFixed(1) + ' → ' + hN.toFixed(1);
+    document.getElementById('bwstat').innerHTML =
+      '<div>初始随机模型 log P(O)<b>' + h0.toFixed(2) + '</b></div>' +
+      '<div>训练后 log P(O)<b>' + hN.toFixed(2) + '</b></div>' +
+      '<div>真值模型 log P(O)<b>' + trueLL.toFixed(2) + '</b></div>' +
+      '<div>EM 单调最小 Δ<b>' + (minD > -1e-9 ? '≥ 0 ✓' : minD.toExponential(1)) + '</b></div>' +
+      '<div>与真值 LL 差距<b>' + (hN >= trueLL - 0.01 * Math.abs(trueLL)
+        ? '✓ ' + (hN - trueLL).toFixed(2) + '（&lt;1%）' : (hN - trueLL).toFixed(2)) + '</b></div>';
+    drawCurve(trueLL);
+  }
+  function drawCurve(trueLL) {
+    var cv = document.getElementById('cv'), dpr = window.devicePixelRatio || 1;
+    var W = cv.clientWidth, Hh = 170;
+    cv.width = W * dpr; cv.height = Hh * dpr;
+    var g = cv.getContext('2d'); g.scale(dpr, dpr);
+    g.clearRect(0, 0, W, Hh);
+    var hist = bwRes.loglikHist, n = hist.length;
+    var lo = Math.min.apply(null, hist.concat([trueLL])), hi = Math.max.apply(null, hist.concat([trueLL]));
+    var pad = (hi - lo) * 0.1 || 1; lo -= pad; hi += pad;
+    var L = 40, R = 10, Tp = 12, B = 24, pw = W - L - R, ph = Hh - Tp - B;
+    function X(i) { return L + pw * (n === 1 ? 0 : i / (n - 1)); }
+    function Y(v) { return Tp + ph * (1 - (v - lo) / (hi - lo)); }
+    g.strokeStyle = '#e4e7ec'; g.lineWidth = 1;
+    for (var k = 0; k <= 4; k++) {
+      var y = Tp + ph * k / 4; g.beginPath(); g.moveTo(L, y); g.lineTo(W - R, y); g.stroke();
+      g.fillStyle = '#8b95a3'; g.font = '10px monospace'; g.textAlign = 'right';
+      g.fillText((hi - (hi - lo) * k / 4).toFixed(0), L - 6, y + 3);
+    }
+    g.strokeStyle = '#d92d20'; g.setLineDash([4, 4]); g.beginPath();
+    g.moveTo(L, Y(trueLL)); g.lineTo(W - R, Y(trueLL)); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#d92d20'; g.font = '10px sans-serif'; g.textAlign = 'left';
+    g.fillText('真值模型 log P(O) = ' + trueLL.toFixed(1), L + 4, Y(trueLL) - 4);
+    g.strokeStyle = '#2563eb'; g.lineWidth = 2; g.beginPath();
+    for (var i = 0; i < n; i++) { if (i === 0) g.moveTo(X(i), Y(hist[i])); else g.lineTo(X(i), Y(hist[i])); }
+    g.stroke();
+    g.fillStyle = '#2563eb';
+    for (i = 0; i < n; i += Math.max(1, Math.floor(n / 12))) { g.beginPath(); g.arc(X(i), Y(hist[i]), 2.5, 0, 6.3); g.fill(); }
+    g.fillStyle = '#5b6472'; g.font = '10px sans-serif'; g.textAlign = 'center';
+    g.fillText('EM 迭代轮次 →', L + pw / 2, Hh - 6);
+  }
+
+  // ---------- 自检面板 ----------
+  function runChecks() {
+    var res = H.selfTest(), h = '', pass = 0;
+    res.forEach(function (r, i) {
+      if (r.pass) pass++;
+      h += '<tr><td class="s"><span class="' + (r.pass ? 'ok' : 'bad') + '">' + (r.pass ? 'PASS' : 'FAIL') +
+           '</span></td><td><b>' + (i + 1) + '. ' + esc(r.name) + '</b></td><td class="d">' + esc(r.detail) + '</td></tr>';
+    });
+    document.getElementById('chk').innerHTML = h;
+    document.getElementById('banner').className = 'banner' + (pass === res.length ? '' : ' bad');
+    document.getElementById('banner').textContent =
+      pass === res.length ? '全部 ' + pass + '/' + res.length + " 项不变量通过（浏览器内实时计算）"
+                          : '通过 ' + pass + '/' + res.length + ' 项，存在失败项';
+  }
+
+  document.getElementById('btn-dec').onclick = decode;
+  document.getElementById('btn-sample').onclick = function () {
+    var rng = H.mulberry32((Math.random() * 1e9) | 0), s = H.sample(TRUE, 6, rng);
+    document.getElementById('sent').value = s.obs.map(function (o) { return VOCAB[o]; }).join(' ');
+    decode();
+  };
+  document.getElementById('btn-bw').onclick = function () {
+    var b = this; b.disabled = true; b.textContent = 'EM 运行中…';
+    setTimeout(function () { runBW(); b.disabled = false; b.textContent = '运行 EM（200 轮）'; }, 30);
+  };
+  Array.prototype.forEach.call(document.querySelectorAll('.pill'), function (p) {
+    p.onclick = function () { document.getElementById('sent').value = p.getAttribute('data-s'); decode(); };
+  });
+  document.getElementById('sent').addEventListener('keydown', function (e) { if (e.key === 'Enter') decode(); });
+  window.addEventListener('resize', function () { if (bwRes) drawCurve(bwTrueLL); });
+
+  decode();
+  runChecks();
+})();
+</script>
+</body>
+</html>
