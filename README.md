@@ -1,5 +1,12 @@
 # hmm-forge
 
+<p align="center">
+  <a href="https://github.com/CJX0712/hmm-forge/actions/workflows/ci.yml"><img src="https://github.com/CJX0712/hmm-forge/actions/workflows/ci.yml/badge.svg" alt="ci"></a>
+  <a href="https://github.com/CJX0712/hmm-forge/releases"><img src="https://img.shields.io/github/v/release/CJX0712/hmm-forge?sort=semver" alt="release"></a>
+  <a href="https://github.com/CJX0712/hmm-forge/blob/main/LICENSE"><img src="https://img.shields.io/github/license/CJX0712/hmm-forge" alt="license"></a>
+  <img src="https://img.shields.io/badge/author-%E6%99%A8%E6%98%9F-1f6feb" alt="author">
+</p>
+
 隐马尔可夫模型（Hidden Markov Model）实验室 —— **零依赖、零构建的单文件 HTML**，在浏览器里跑完整的前向-后向 / Viterbi / Baum-Welch 算法，并自带 8 条可交叉验证的不变量自检。
 
 打开 `index.html` 即可用，无需服务器、无需 npm install。
