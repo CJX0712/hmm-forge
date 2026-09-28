@@ -2,734 +2,1422 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>hmm-forge · 隐马尔可夫模型实验室</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HMM Forge · 隐马尔可夫模型锻造炉</title>
 <style>
   :root{
-    --bg:#f6f7f9; --card:#ffffff; --line:#e4e7ec; --line2:#eef0f4;
-    --fg:#1f2328; --fg2:#5b6472; --fg3:#8b95a3;
-    --blue:#2563eb; --blue-w:#eaf1ff; --red:#d92d20; --green:#067647; --amber:#b54708;
+    --bg:#0b1020; --bg2:#111a33; --panel:#141d38; --line:#25314f;
+    --fg:#e6ecff; --dim:#93a1c4; --dim2:#6b7a9c;
+    --acc:#7dd3fc; --acc2:#f0abfc; --ok:#4ade80; --bad:#fb7185; --warn:#fbbf24;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--fg);
-    font:14px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}
-  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 64px}
-  header h1{margin:0 0 6px;font-size:24px;letter-spacing:.3px}
-  header p{margin:0 0 22px;color:var(--fg2);font-size:13px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:16px}
-  .card h2{margin:0 0 4px;font-size:15px}
-  .card .sub{margin:0 0 14px;color:var(--fg3);font-size:12px}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  input[type=text]{flex:1;min-width:260px;padding:9px 11px;border:1px solid var(--line);border-radius:7px;
-    background:#fff;color:var(--fg);font:14px ui-monospace,Menlo,Consolas,monospace}
-  input[type=text]:focus{outline:2px solid var(--blue-w);border-color:var(--blue)}
-  button{padding:8px 14px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--fg);
-    font-size:13px;cursor:pointer}
-  button:hover{border-color:var(--blue);color:var(--blue)}
-  button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
-  button.primary:hover{filter:brightness(1.06);color:#fff}
-  .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;border:1px solid var(--line);color:var(--fg2);cursor:pointer;margin-right:6px}
-  .pill:hover{border-color:var(--blue);color:var(--blue)}
-  .kv{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px}
-  .kv div{font-size:12px;color:var(--fg3)}
-  .kv b{display:block;font:600 16px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--fg)}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:6px}
-  .tok{text-align:center;min-width:64px}
-  .tok .w{font:14px ui-monospace,Menlo,Consolas,monospace}
-  .tok .s{margin-top:4px;padding:2px 8px;border-radius:6px;font-size:12px;background:var(--blue-w);
-    color:var(--blue);border:1px solid #c9dcff;display:inline-block}
-  .sc{display:grid;gap:4px;overflow-x:auto}
-  .sc .h{font:11px ui-monospace,Menlo,Consolas,monospace;color:var(--fg3);text-align:center}
-  .sc .lbl{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg2);display:flex;align-items:center;justify-content:flex-end;padding-right:8px}
-  .cell{border:1px solid var(--line2);border-radius:5px;padding:5px 2px;text-align:center;
-    font:11px ui-monospace,Menlo,Consolas,monospace;color:var(--fg2);background:#fbfcfd}
-  .cell.best{border-color:var(--blue);background:var(--blue-w);color:var(--blue);font-weight:600;box-shadow:0 0 0 2px #dbe8ff inset}
-  .bar{display:flex;height:12px;border-radius:3px;overflow:hidden;background:var(--line2);margin-top:3px}
-  .bar i{display:block;height:100%}
-  table{border-collapse:collapse;font:11px ui-monospace,Menlo,Consolas,monospace}
-  td,th{padding:3px 6px;text-align:right;white-space:nowrap}
-  thead th{color:var(--fg3);font-weight:500}
-  tbody th{color:var(--fg2);font-weight:500;text-align:right}
-  .heat{border-radius:3px}
-  .mono{font:12px ui-monospace,Menlo,Consolas,monospace}
-  .note{color:var(--fg3);font-size:12px;margin-top:10px}
-  table.chk{width:100%;font:13px/1.5 -apple-system,"Segoe UI","PingFang SC",sans-serif}
-  table.chk td{text-align:left;white-space:normal;padding:8px 8px;border-bottom:1px solid var(--line2);vertical-align:top}
-  table.chk td.d{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg2);width:290px}
-  table.chk td.s{width:72px}
-  .ok{color:var(--green);font-weight:600}
-  .bad{color:var(--red);font-weight:600}
-  .banner{padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;
-    background:#ecfdf3;border:1px solid #abefc6;color:var(--green)}
-  .banner.bad{background:#fef3f2;border-color:#fecdca;color:var(--red)}
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  @media(max-width:860px){.cols{grid-template-columns:1fr}}
-  canvas{width:100%;height:170px;display:block}
+  html,body{margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 700px at 15% -10%,#16203f 0%,var(--bg) 55%) no-repeat,var(--bg);
+    color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1280px;margin:0 auto;padding:22px 18px 60px}
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;justify-content:space-between;
+         border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:20px}
+  h1{margin:0;font-size:24px;letter-spacing:.5px}
+  h1 .en{color:var(--acc);font-weight:600}
+  .sub{color:var(--dim);font-size:13px;margin-top:4px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap}
+  .badge{font-family:var(--mono);font-size:12px;color:var(--dim);
+         border:1px solid var(--line);background:var(--bg2);border-radius:999px;padding:4px 10px}
+  .badge b{color:var(--acc);font-weight:600}
+  h2{font-size:15px;margin:0 0 10px;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+  h2::before{content:"";width:3px;height:14px;background:var(--acc);border-radius:2px}
+  h3{font-size:13px;margin:14px 0 6px;color:var(--dim);font-weight:600}
+  .card{background:linear-gradient(180deg,#151f3c,#121a33);border:1px solid var(--line);
+        border-radius:12px;padding:14px 16px;margin-bottom:16px}
+  .grid2{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:16px;align-items:start}
+  @media (max-width:960px){.grid2{grid-template-columns:1fr}}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+  label{font-size:12px;color:var(--dim);display:inline-flex;align-items:center;gap:6px}
+  input[type=number],input[type=text],select{
+    background:#0d1428;color:var(--fg);border:1px solid var(--line);border-radius:6px;
+    padding:6px 8px;font-family:var(--mono);font-size:12px;outline:none}
+  input[type=number]:focus,input[type=text]:focus{border-color:var(--acc)}
+  input[type=number]{width:64px}
+  input.wide{width:150px}
+  button{
+    background:linear-gradient(180deg,#22406e,#1a2f52);color:#dceaff;border:1px solid #33507f;
+    border-radius:8px;padding:7px 12px;font-size:12.5px;font-family:var(--sans);cursor:pointer;
+    transition:.15s;white-space:nowrap}
+  button:hover{border-color:var(--acc);color:#fff}
+  button:active{transform:translateY(1px)}
+  button.primary{background:linear-gradient(180deg,#0e7490,#0b5f78);border-color:#22d3ee}
+  button.primary:hover{border-color:#67e8f9}
+  button.ghost{background:#0d1428;border-color:var(--line)}
+  table{border-collapse:collapse;font-family:var(--mono);font-size:12px}
+  th,td{padding:2px}
+  th{color:var(--dim2);font-weight:600;font-size:11px;text-align:center}
+  td.lbl{color:var(--acc);text-align:right;padding-right:6px;font-size:11px}
+  .mwrap{overflow-x:auto}
+  table.m{border-collapse:separate;border-spacing:3px}
+  table.m input{width:58px;text-align:right;padding:3px 4px;font-size:11.5px}
+  .stat{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .kv{font-family:var(--mono);font-size:12px;background:#0d1428;border:1px solid var(--line);
+      border-radius:8px;padding:6px 10px;color:var(--dim)}
+  .kv b{color:var(--fg);font-weight:600}
+  .kv.ok b{color:var(--ok)} .kv.bad b{color:var(--bad)}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#0a1124}
+  svg{display:block}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);margin-top:8px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  #selftest .case{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:#0d1428}
+  #selftest .case.pass{border-left:3px solid var(--ok)}
+  #selftest .case.fail{border-left:3px solid var(--bad)}
+  #selftest .nm{font-size:12.5px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  #selftest .nm .id{font-family:var(--mono);color:var(--dim2);font-size:11px}
+  #selftest .dt{font-family:var(--mono);font-size:11px;color:var(--dim);word-break:break-all;margin-top:3px}
+  #selftest .mk{font-size:13px}
+  .summary{font-family:var(--mono);font-size:13px;padding:8px 12px;border-radius:8px;
+           border:1px solid var(--line);background:#0d1428;margin-bottom:10px}
+  .summary.ok{color:var(--ok);border-color:#1e6b45}
+  .summary.bad{color:var(--bad);border-color:#7f2a3c}
+  .seq{font-family:var(--mono);font-size:12px;word-break:break-all;color:var(--acc2)}
+  .hint{font-size:11.5px;color:var(--dim2)}
+  footer{border-top:1px solid var(--line);margin-top:26px;padding-top:14px;color:var(--dim2);font-size:12px;
+         display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  footer b{color:var(--dim)}
 </style>
 </head>
 <body>
 <div class="wrap">
+
 <header>
-  <h1>hmm-forge</h1>
-  <p>隐马尔可夫模型实验室 · 前向-后向 / Viterbi / Baum-Welch EM · 零依赖单文件 · 8 条不变量浏览器内一键自检</p>
+  <div>
+    <h1>HMM Forge <span class="en">· 隐马尔可夫模型锻造炉</span></h1>
+    <div class="sub">纯 JS 手写 HMM 全套算法 · 全程 log-space + logSumExp · 单文件零依赖 · 内置可验证不变量自检</div>
+  </div>
+  <div class="badges">
+    <span class="badge">engine <b id="ver">-</b></span>
+    <span class="badge">seed <b id="seedshow">-</b></span>
+    <span class="badge">N <b id="nshow">-</b> · M <b id="mshow">-</b></span>
+    <span class="badge">作者 <b>晨星 / Chenxing</b></span>
+  </div>
 </header>
 
+<!-- ============ 控制条 ============ -->
 <div class="card">
-  <h2>词性标注解码（Viterbi）</h2>
-  <p class="sub">隐状态 = 词性，观测 = 单词。输入句子后解码出最可能的词性序列。</p>
+  <h2>控制 / Controls</h2>
   <div class="row">
-    <input type="text" id="sent" value="the dog runs quickly" spellcheck="false">
-    <button class="primary" id="btn-dec">解码</button>
-    <button id="btn-sample">随机采样</button>
+    <label>隐藏状态数 N <input type="number" id="inN" min="1" max="8" value="4"></label>
+    <label>观测符号数 M <input type="number" id="inM" min="1" max="8" value="3"></label>
+    <label>随机种子 seed <input type="number" id="inSeed" min="0" step="1" value="20260929"></label>
+    <label>序列长度 T <input type="number" id="inT" min="1" max="400" value="24"></label>
+    <label>EM 迭代 <input type="number" id="inIter" min="1" max="300" value="40"></label>
   </div>
-  <div class="row" style="margin-top:10px">
-    <span class="pill" data-s="the dog runs quickly">the dog runs quickly</span>
-    <span class="pill" data-s="I like the big cat">I like the big cat</span>
-    <span class="pill" data-s="the small bird sings slowly">the small bird sings slowly</span>
-    <span class="pill" data-s="a big dog jumps">a big dog jumps</span>
-  </div>
-  <div class="kv" id="stat"></div>
-  <div id="chips" class="chips"></div>
-  <p class="note" id="vocabnote"></p>
-</div>
-
-<div class="card">
-  <h2>Viterbi Trellis（δ 对数域）</h2>
-  <p class="sub">行 = 隐状态，列 = 时刻；高亮格为最优路径，格内为 log δ。</p>
-  <div id="trellis" class="sc"></div>
-</div>
-
-<div class="card">
-  <h2>后验边缘 γ<sub>t</sub>(i) = P(q<sub>t</sub>=i | O, λ)</h2>
-  <p class="sub">前向-后向算法给出每个时刻的状态后验；每段颜色对应一个词性，长度 = 后验概率。</p>
-  <div id="post"></div>
-</div>
-
-<div class="cols">
-  <div class="card">
-    <h2>转移矩阵 A</h2>
-    <p class="sub">P(q<sub>t+1</sub>=j | q<sub>t</sub>=i)</p>
-    <div style="overflow-x:auto" id="matA"></div>
-  </div>
-  <div class="card">
-    <h2>发射矩阵 B</h2>
-    <p class="sub">P(o<sub>t</sub>=v | q<sub>t</sub>=i)，列 = <span id="bscope">当前句子的词</span></p>
-    <div style="overflow-x:auto" id="matB"></div>
-  </div>
-</div>
-
-<div class="card">
-  <h2>Baum-Welch 参数还原</h2>
-  <p class="sub">用真模型采样 3000 个观测作为语料 → 随机初始化 → EM 训练 200 轮。EM 定理保证对数似然单调非减。<br>
-  注意：HMM 的状态标签只在「置换等价」意义下可识别（见不变量 8），训练出的状态编号会与真值错序，这是正常现象。</p>
   <div class="row">
-    <button class="primary" id="btn-bw">运行 EM（200 轮）</button>
-    <span class="mono" id="bwinfo" style="color:var(--fg2)"></span>
+    <button class="primary" id="btnRandom">🎲 随机生成模型</button>
+    <button id="btnSample">🎯 生成观测序列</button>
+    <button class="primary" id="btnTrain">▶ 训练 Baum-Welch（实时曲线）</button>
+    <button class="ghost" id="btnStep">⏭ 单步 EM</button>
+    <button class="ghost" id="btnReset">↺ 重置曲线</button>
   </div>
-  <canvas id="cv" height="170"></canvas>
-  <div class="kv" id="bwstat"></div>
+  <div class="row" style="margin-bottom:0">
+    <label>观测序列 O（A/B/C 或 0/1/2，逗号或空格分隔） <input type="text" class="wide" id="inObs" style="width:340px"></label>
+    <button class="ghost" id="btnParse">解析序列</button>
+    <span class="hint">留空则使用「生成观测序列」的结果</span>
+  </div>
 </div>
 
-<div class="card">
-  <h2>不变量自检</h2>
-  <p class="sub">全部在浏览器内实时计算，与无头 Node 断言同一份 engine 代码。</p>
-  <div id="banner"></div>
-  <table class="chk"><tbody id="chk"></tbody></table>
-</div>
+<div class="grid2">
+  <!-- ============ 左：参数 ============ -->
+  <div>
+    <div class="card">
+      <h2>模型参数 λ = (A, B, π) / Parameters</h2>
+      <div class="mwrap">
+        <h3>初始分布 π</h3>
+        <table class="m" id="tblPi"></table>
+        <h3>转移矩阵 A（行 = 当前状态 → 列 = 下一状态）</h3>
+        <table class="m" id="tblA"></table>
+        <h3>发射矩阵 B（行 = 状态 → 列 = 观测符号）</h3>
+        <table class="m" id="tblB"></table>
+      </div>
+      <div class="stat" id="normStat"></div>
+      <div class="hint">数值可直接编辑，失焦即重算；每行自动归一化。</div>
+    </div>
+  </div>
+
+  <!-- ============ 右：可视化 ============ -->
+  <div>
+    <div class="card">
+      <h2>Trellis 网格与 Viterbi 最优路径</h2>
+      <div class="scroll"><svg id="trellis" width="900" height="240"></svg></div>
+      <div class="legend">
+        <span><i style="background:#7dd3fc"></i>圆面积 ∝ 后验 γ<sub>t</sub>(i)</span>
+        <span><i style="background:#f0abfc"></i>Viterbi 最优路径</span>
+        <span><i style="background:#3b4a6b"></i>转移边（粗细 ∝ a<sub>ij</sub>）</span>
+      </div>
+      <div class="stat" id="pathStat"></div>
+    </div>
+
+    <div class="card">
+      <h2>Baum-Welch 对数似然收敛曲线 / EM convergence</h2>
+      <div class="scroll"><svg id="curve" width="900" height="230"></svg></div>
+      <div class="stat" id="bwStat"></div>
+    </div>
+  </div>
 </div>
 
+<!-- ============ 自检 ============ -->
+<div class="card" id="selftest">
+  <h2>一键自检 / Invariant self-check</h2>
+  <div class="row">
+    <button class="primary" id="btnTest">🧪 运行全部不变量自检</button>
+    <span class="hint">在浏览器里实时重算全部不变量；同一套用例在 Node 下由 engine.test.mjs 无头复跑。</span>
+  </div>
+  <div id="summary" class="summary" style="display:none"></div>
+  <div id="cases"></div>
+</div>
+
+<footer>
+  <div>HMM Forge · <b>晨星 / Chenxing</b> · MIT License · 单文件零依赖（无 CDN / 无字体 / 无网络请求）</div>
+  <div>Forward · Backward · Viterbi · Baum-Welch · log-space + logSumExp</div>
+</footer>
+
+</div>
+
+<!-- ===================================================================
+     算法引擎：可整体抽出为独立 JS 模块（Node 可直接 require/eval）
+     =================================================================== -->
 <script id="engine">
-(function () {
+/* =====================================================================
+ * HMM Forge — 算法引擎 (Algorithm Engine)
+ * 隐马尔可夫模型 / Hidden Markov Model — pure JavaScript, zero dependencies
+ *
+ * Author : 晨星 / Chenxing
+ * License: MIT
+ *
+ * Design rules / 设计纪律:
+ *   1. 所有概率一律在 log-space 中运算 (all arithmetic in log-space)。
+ *   2. 任何"对概率求和"都必须经过 logSumExp — 禁止 exp 后再相加。
+ *   3. 引擎不得引用 document / window / fetch / 任何全局宿主对象，
+ *      因此可以原样抽出为独立 JS 模块，在 Node 中无头运行。
+ *
+ * Algorithms / 算法清单:
+ *   forward()        前向算法 (log-space, per-step scaling factors)
+ *   backward()       后向算法 (log-space)
+ *   viterbi()       Viterbi 解码 (log-space dynamic programming)
+ *   bruteForce()     暴力枚举全部隐藏路径 (仅小规模, 用于交叉验证)
+ *   baumWelchStep()  Baum-Welch (EM) 单步
+ *   baumWelch()      Baum-Welch (EM) 迭代训练
+ *   posteriorGamma() 后验状态概率 gamma_t(i) = P(q_t = i | O, λ)
+ * ===================================================================== */
+(function (root) {
   'use strict';
-  var LOGZERO = -1e300;
 
-  function logsumexp(a) {
-    var m = -Infinity, i;
-    for (i = 0; i < a.length; i++) if (a[i] > m) m = a[i];
-    if (m === -Infinity) return LOGZERO;
-    if (m === Infinity) return Infinity;
-    var s = 0;
-    for (i = 0; i < a.length; i++) s += Math.exp(a[i] - m);
-    return m + Math.log(s);
+  var NEG_INF = -Infinity;
+
+  /* ------------------------------------------------------------------
+   * 0. 基础数值工具 / numeric primitives
+   * ---------------------------------------------------------------- */
+
+  /** log(x)，并把 0 映射为 -Infinity 而不是 NaN。 */
+  function safeLog(x) {
+    if (x === 0) return NEG_INF;
+    if (x < 0 || x !== x) return NaN;
+    return Math.log(x);
   }
-  function safelog(p) { return (p > 0 && isFinite(p)) ? Math.log(p) : LOGZERO; }
-  function mulberry32(a) {
+
+  /**
+   * logSumExp: log( Σ_i exp(v_i) )，数值稳定版。
+   * 先减去最大值再 exp，杜绝 overflow / underflow。
+   */
+  function logSumExp(values) {
+    var n = values.length;
+    if (n === 0) return NEG_INF;
+    var max = NEG_INF;
+    for (var i = 0; i < n; i++) {
+      var v = values[i];
+      if (v !== v) return NaN;          // NaN 传染
+      if (v === Infinity) return Infinity;
+      if (v > max) max = v;
+    }
+    if (max === NEG_INF) return NEG_INF;
+    var acc = 0;
+    for (var k = 0; k < n; k++) acc += Math.exp(values[k] - max);
+    return max + Math.log(acc);
+  }
+
+  /** 两个对数概率相加: log(exp(a) + exp(b))，比通用版更快。 */
+  function logAdd(a, b) {
+    if (a === NEG_INF) return b;
+    if (b === NEG_INF) return a;
+    if (a >= b) return a + Math.log1p(Math.exp(b - a));
+    return b + Math.log1p(Math.exp(a - b));
+  }
+
+  function zeros(rows, cols, fill) {
+    var m = new Array(rows);
+    for (var i = 0; i < rows; i++) {
+      m[i] = new Array(cols);
+      for (var j = 0; j < cols; j++) m[i][j] = fill;
+    }
+    return m;
+  }
+
+  /** 每行归一化，返回新的二维普通概率矩阵。 */
+  function normalizeRows(m) {
+    return m.map(function (row) {
+      var s = 0, i;
+      for (i = 0; i < row.length; i++) s += row[i];
+      if (!(s > 0)) return row.map(function () { return 1 / row.length; });
+      var out = row.map(function (v) { return v / s; });
+      // 二次归一，抵消浮点残差，保证行和误差 < 1e-15
+      var s2 = 0;
+      for (i = 0; i < out.length; i++) s2 += out[i];
+      return out.map(function (v) { return v / s2; });
+    });
+  }
+
+  /** 向量归一化。 */
+  function normalizeVector(v) {
+    var s = 0;
+    for (var i = 0; i < v.length; i++) s += v[i];
+    if (!(s > 0)) return v.map(function () { return 1 / v.length; });
+    var out = v.map(function (x) { return x / s; });
+    var s2 = 0;
+    for (i = 0; i < out.length; i++) s2 += out[i];
+    return out.map(function (x) { return x / s2; });
+  }
+
+  /** 行和与 1 的最大偏差 (用于归一化不变量检查)。 */
+  function rowSumError(m) {
+    var worst = 0;
+    for (var i = 0; i < m.length; i++) {
+      var s = 0;
+      for (var j = 0; j < m[i].length; j++) s += m[i][j];
+      var d = Math.abs(s - 1);
+      if (d > worst) worst = d;
+    }
+    return worst;
+  }
+
+  /* ------------------------------------------------------------------
+   * 1. 模型构造 / model construction
+   *     λ = (A, B, π)
+   *     A : N×N 状态转移矩阵   B : N×M 发射矩阵   π : N 初始分布
+   * ---------------------------------------------------------------- */
+
+  function createModel(A, B, pi) {
+    A = normalizeRows(A);
+    B = normalizeRows(B);
+    pi = normalizeVector(pi);
+    var N = pi.length, M = B[0].length;
+    return {
+      N: N,
+      M: M,
+      A: A, B: B, pi: pi,
+      logA: A.map(function (r) { return r.map(safeLog); }),
+      logB: B.map(function (r) { return r.map(safeLog); }),
+      logPi: pi.map(safeLog)
+    };
+  }
+
+  function cloneModel(m) {
+    return createModel(
+      m.A.map(function (r) { return r.slice(); }),
+      m.B.map(function (r) { return r.slice(); }),
+      m.pi.slice()
+    );
+  }
+
+  /* ------------------------------------------------------------------
+   * 2. 前向算法 / Forward algorithm
+   *    α_t(j) = P(O_0..O_t, q_t = j | λ)
+   *    同时给出等价的"逐步缩放"分解:
+   *      logCumScale[t] = log P(O_0..O_t) = Σ_{s≤t} log c_s
+   *      logScale[t]    = log c_t
+   *      logAlphaHat[t] = log α_t − logCumScale[t]   (归一化后每行 logSumExp = 0)
+   *    log P(O|λ) = logCumScale[T-1] = logSumExp_i(log α_{T-1}(i))。
+   *    缩放因子本身由 forwardScaled() 独立复算并交叉验证 (见自检 T4)。
+   * ---------------------------------------------------------------- */
+
+  function forward(model, obs) {
+    var logA = model.logA, logB = model.logB, logPi = model.logPi;
+    var N = model.N, T = obs.length;
+    if (T === 0) return {
+      logAlpha: [], logAlphaHat: [], logScale: [], logCumScale: [],
+      logLikelihood: 0, T: 0, N: N
+    };
+
+    var logAlpha = new Array(T);
+    var logAlphaHat = new Array(T);
+    var logScale = new Array(T);
+    var logCumScale = new Array(T);
+    var prev = new Array(N), i, j, t;
+    for (i = 0; i < N; i++) prev[i] = logPi[i] + logB[i][obs[0]];
+    logAlpha[0] = prev.slice();
+    logCumScale[0] = logSumExp(prev);
+    logScale[0] = logCumScale[0];
+
+    for (t = 1; t < T; t++) {
+      var cur = new Array(N);
+      for (j = 0; j < N; j++) {
+        var terms = new Array(N);
+        for (i = 0; i < N; i++) terms[i] = prev[i] + logA[i][j];
+        cur[j] = logSumExp(terms) + logB[j][obs[t]];
+      }
+      logAlpha[t] = cur.slice();
+      logCumScale[t] = logSumExp(cur);
+      logScale[t] = logCumScale[t] - logCumScale[t - 1];
+      prev = cur;
+    }
+
+    for (t = 0; t < T; t++) {
+      var hat = new Array(N);
+      for (i = 0; i < N; i++) hat[i] = logAlpha[t][i] - logCumScale[t];
+      logAlphaHat[t] = hat;
+    }
+
+    var logLik = logCumScale[T - 1];
+    return {
+      logAlpha: logAlpha, logAlphaHat: logAlphaHat,
+      logScale: logScale, logCumScale: logCumScale,
+      logLikelihood: logLik, T: T, N: N
+    };
+  }
+
+  /* ------------------------------------------------------------------
+   * 2b. 前向算法 (概率空间 + 逐步缩放) / Forward, probability space, scaled
+   *     经典教科书实现: 每步把 α̂ 归一化，累乘缩放因子 c_t。
+   *     这是一条与 2a 完全独立的代码路径（不经过 log / logSumExp），
+   *     专门用于交叉验证 log-space 版本，避免"自己证自己"。
+   * ---------------------------------------------------------------- */
+
+  function forwardScaled(model, obs) {
+    var A = model.A, B = model.B, pi = model.pi;
+    var N = model.N, T = obs.length, i, j, t;
+    if (T === 0) return { alphaHat: [], logC: [], logCumScale: [], logLikelihood: 0, T: 0, N: N };
+
+    var alphaHat = new Array(T), logC = new Array(T), logCumScale = new Array(T);
+    var cur = new Array(N), s = 0;
+    for (i = 0; i < N; i++) { cur[i] = pi[i] * B[i][obs[0]]; s += cur[i]; }
+    for (i = 0; i < N; i++) cur[i] /= s;
+    alphaHat[0] = cur.slice();
+    logC[0] = Math.log(s);
+    logCumScale[0] = logC[0];
+
+    for (t = 1; t < T; t++) {
+      var nxt = new Array(N);
+      s = 0;
+      for (j = 0; j < N; j++) {
+        var acc = 0;
+        for (i = 0; i < N; i++) acc += cur[i] * A[i][j];
+        nxt[j] = acc * B[j][obs[t]];
+        s += nxt[j];
+      }
+      for (j = 0; j < N; j++) nxt[j] /= s;
+      alphaHat[t] = nxt.slice();
+      logC[t] = Math.log(s);
+      logCumScale[t] = logCumScale[t - 1] + logC[t];
+      cur = nxt;
+    }
+
+    var ll = 0;
+    for (t = 0; t < T; t++) ll += logC[t];
+    return { alphaHat: alphaHat, logC: logC, logCumScale: logCumScale, logLikelihood: ll, T: T, N: N };
+  }
+
+  /* ------------------------------------------------------------------
+   * 3. 后向算法 / Backward algorithm
+   *    β_t(i) = P(O_{t+1}..O_{T-1} | q_t = i, λ)
+   *    log P(O|λ) = logSumExp_i( log π_i + log b_i(O_0) + log β_0(i) )
+   * ---------------------------------------------------------------- */
+
+  function backward(model, obs) {
+    var logA = model.logA, logB = model.logB, logPi = model.logPi;
+    var N = model.N, T = obs.length, i, j, t;
+    if (T === 0) return { logBeta: [], logLikelihood: 0, T: 0, N: N };
+
+    var logBeta = new Array(T);
+    var next = new Array(N);
+    for (i = 0; i < N; i++) next[i] = 0;      // log β_{T-1}(i) = log 1 = 0
+    logBeta[T - 1] = next.slice();
+
+    for (t = T - 2; t >= 0; t--) {
+      var cur = new Array(N);
+      for (i = 0; i < N; i++) {
+        var terms = new Array(N);
+        for (j = 0; j < N; j++) terms[j] = logA[i][j] + logB[j][obs[t + 1]] + next[j];
+        cur[i] = logSumExp(terms);
+      }
+      logBeta[t] = cur;
+      next = cur;
+    }
+
+    var init = new Array(N);
+    for (i = 0; i < N; i++) init[i] = logPi[i] + logB[i][obs[0]] + logBeta[0][i];
+    return { logBeta: logBeta, logLikelihood: logSumExp(init), T: T, N: N };
+  }
+
+  /* ------------------------------------------------------------------
+   * 4. Viterbi 解码 / Viterbi decoding
+   *    δ_t(j) = max_{q_0..q_{t-1}} P(q_0..q_t = j, O_0..O_t | λ)
+   * ---------------------------------------------------------------- */
+
+  function viterbi(model, obs) {
+    var logA = model.logA, logB = model.logB, logPi = model.logPi;
+    var N = model.N, T = obs.length, i, j, t;
+    if (T === 0) return { path: [], logProb: 0, delta: [], psi: [] };
+
+    var delta = new Array(T), psi = new Array(T);
+    var d0 = new Array(N), p0 = new Array(N);
+    for (i = 0; i < N; i++) { d0[i] = logPi[i] + logB[i][obs[0]]; p0[i] = -1; }
+    delta[0] = d0; psi[0] = p0;
+
+    for (t = 1; t < T; t++) {
+      var d = new Array(N), p = new Array(N);
+      for (j = 0; j < N; j++) {
+        var best = NEG_INF, arg = 0;
+        for (i = 0; i < N; i++) {
+          var v = delta[t - 1][i] + logA[i][j];
+          if (v > best) { best = v; arg = i; }
+        }
+        d[j] = best + logB[j][obs[t]];
+        p[j] = arg;
+      }
+      delta[t] = d; psi[t] = p;
+    }
+
+    var bestLast = NEG_INF, last = 0;
+    for (i = 0; i < N; i++) if (delta[T - 1][i] > bestLast) { bestLast = delta[T - 1][i]; last = i; }
+
+    var path = new Array(T);
+    path[T - 1] = last;
+    for (t = T - 1; t > 0; t--) path[t - 1] = psi[t][path[t]];
+    return { path: path, logProb: bestLast, delta: delta, psi: psi };
+  }
+
+  /* ------------------------------------------------------------------
+   * 5. 暴力枚举 / Brute force (ground truth, 仅小规模)
+   *    穷举 N^T 条隐藏路径，给出:
+   *      logLikelihood = log Σ_Q P(O, Q | λ)      (应与前向一致)
+   *      bestLogProb   = max_Q P(O, Q | λ)        (应与 Viterbi 一致)
+   *      bestPath                                  (应与 Viterbi 一致)
+   * ---------------------------------------------------------------- */
+
+  function bruteForce(model, obs, limit) {
+    var logA = model.logA, logB = model.logB, logPi = model.logPi;
+    var N = model.N, T = obs.length;
+    if (T === 0) return { logLikelihood: 0, bestLogProb: 0, bestPath: [], count: 0 };
+    var cap = limit || 2000000;
+    var total = Math.pow(N, T);
+    if (!(total <= cap)) throw new Error('bruteForce: N^T = ' + total + ' 超过上限 ' + cap);
+
+    var logs = new Array(total);
+    var best = NEG_INF, bestIdx = 0;
+    var q = new Array(T);
+    for (var c = 0; c < total; c++) {
+      var x = c;
+      for (var t = T - 1; t >= 0; t--) { q[t] = x % N; x = (x - q[t]) / N; }
+      var lp = logPi[q[0]] + logB[q[0]][obs[0]];
+      for (t = 1; t < T; t++) lp += logA[q[t - 1]][q[t]] + logB[q[t]][obs[t]];
+      logs[c] = lp;
+      if (lp > best) { best = lp; bestIdx = c; }
+    }
+    var bestPath = new Array(T);
+    var y = bestIdx;
+    for (t = T - 1; t >= 0; t--) { bestPath[t] = y % N; y = (y - bestPath[t]) / N; }
+    return { logLikelihood: logSumExp(logs), bestLogProb: best, bestPath: bestPath, count: total };
+  }
+
+  /* ------------------------------------------------------------------
+   * 6. 后验 / posteriors
+   *    gamma_t(i) = P(q_t = i | O, λ) = α_t(i) β_t(i) / P(O|λ)
+   * ---------------------------------------------------------------- */
+
+  function posteriorGamma(model, obs) {
+    var f = forward(model, obs), b = backward(model, obs);
+    var N = model.N, T = obs.length, t, i;
+    var gamma = new Array(T);
+    for (t = 0; t < T; t++) {
+      gamma[t] = new Array(N);
+      for (i = 0; i < N; i++) gamma[t][i] = Math.exp(f.logAlpha[t][i] + b.logBeta[t][i] - f.logLikelihood);
+    }
+    return { gamma: gamma, logLikelihood: f.logLikelihood, logAlpha: f.logAlpha, logBeta: b.logBeta };
+  }
+
+  /* ------------------------------------------------------------------
+   * 7. Baum-Welch (EM) / 无监督训练
+   *    E-step: gamma, xi 全部在 log-space 累积
+   *    M-step: 闭式重估计 + 显式行归一化
+   * ---------------------------------------------------------------- */
+
+  function asSequenceList(seqs) {
+    if (!seqs.length) return [];
+    return Array.isArray(seqs[0]) ? seqs : [seqs];
+  }
+
+  function logLikelihood(model, seqs) {
+    var list = asSequenceList(seqs), total = 0;
+    for (var i = 0; i < list.length; i++) total += forward(model, list[i]).logLikelihood;
+    return total;
+  }
+
+  /** 单步 EM: 由 θ_k 推出 θ_{k+1}，同时返回 θ_k 下的对数似然。 */
+  function baumWelchStep(model, seqs) {
+    var list = asSequenceList(seqs);
+    var N = model.N, M = model.M, i, j, t;
+    var logPiNum = new Array(N); for (i = 0; i < N; i++) logPiNum[i] = NEG_INF;
+    var aNum = zeros(N, N, NEG_INF);
+    var aDen = new Array(N); for (i = 0; i < N; i++) aDen[i] = NEG_INF;
+    var bNum = zeros(N, M, NEG_INF);
+    var bDen = new Array(N); for (i = 0; i < N; i++) bDen[i] = NEG_INF;
+    var totalLL = 0;
+
+    for (var s = 0; s < list.length; s++) {
+      var obs = list[s];
+      if (!obs.length) continue;
+      var T = obs.length;
+      var f = forward(model, obs), b = backward(model, obs);
+      var ll = f.logLikelihood;
+      totalLL += ll;
+
+      for (i = 0; i < N; i++) {
+        logPiNum[i] = logAdd(logPiNum[i], f.logAlpha[0][i] + b.logBeta[0][i] - ll);
+      }
+      for (t = 0; t < T; t++) {
+        for (i = 0; i < N; i++) {
+          var g = f.logAlpha[t][i] + b.logBeta[t][i] - ll;
+          bDen[i] = logAdd(bDen[i], g);
+          bNum[i][obs[t]] = logAdd(bNum[i][obs[t]], g);
+        }
+      }
+      for (t = 0; t < T - 1; t++) {
+        for (i = 0; i < N; i++) {
+          for (j = 0; j < N; j++) {
+            var xi = f.logAlpha[t][i] + model.logA[i][j] +
+                     model.logB[j][obs[t + 1]] + b.logBeta[t + 1][j] - ll;
+            aNum[i][j] = logAdd(aNum[i][j], xi);
+            aDen[i] = logAdd(aDen[i], xi);
+          }
+        }
+      }
+    }
+
+    var piDen = logSumExp(logPiNum);
+    var newPi = new Array(N);
+    var newA = zeros(N, N, 1 / N);
+    var newB = zeros(N, M, 1 / M);
+    for (i = 0; i < N; i++) {
+      newPi[i] = (piDen === NEG_INF || piDen === Infinity) ? 1 / N
+        : Math.min(1, Math.max(0, Math.exp(logPiNum[i] - piDen)));
+      for (j = 0; j < N; j++) {
+        newA[i][j] = (aDen[i] === NEG_INF || aDen[i] === Infinity) ? 1 / N
+          : Math.min(1, Math.max(0, Math.exp(aNum[i][j] - aDen[i])));
+      }
+      for (var k = 0; k < M; k++) {
+        newB[i][k] = (bDen[i] === NEG_INF || bDen[i] === Infinity) ? 1 / M
+          : Math.min(1, Math.max(0, Math.exp(bNum[i][k] - bDen[i])));
+      }
+    }
+
+    var next = createModel(newA, newB, newPi);
+    return { model: next, logLikelihood: totalLL };
+  }
+
+  /** 迭代 EM 直到收敛，history[k] = 第 k 次迭代时的 log P(O|λ)。 */
+  function baumWelch(seqs, model0, opts) {
+    opts = opts || {};
+    var maxIter = opts.maxIter || 50;
+    var tol = (opts.tol == null) ? 1e-9 : opts.tol;
+    var list = asSequenceList(seqs);
+    var model = cloneModel(model0);
+    var history = [];
+    var prevLL = NEG_INF;
+
+    for (var it = 0; it < maxIter; it++) {
+      var ll = logLikelihood(model, list);
+      history.push(ll);
+      if (opts.onIteration) opts.onIteration(it, model, ll);
+      if (prevLL !== NEG_INF && Math.abs(ll - prevLL) <= tol * Math.max(1, Math.abs(prevLL))) {
+        prevLL = ll;
+        break;
+      }
+      prevLL = ll;
+      var step = baumWelchStep(model, list);
+      model = step.model;
+      if (opts.onStep) opts.onStep(it, model);
+    }
+    history.push(logLikelihood(model, list));
+    return { model: model, history: history, iterations: history.length };
+  }
+
+  /* ------------------------------------------------------------------
+   * 8. 确定性随机 / deterministic PRNG (mulberry32)
+   * ---------------------------------------------------------------- */
+
+  function mulberry32(seed) {
+    var a = (seed >>> 0) || 1;
     return function () {
-      a |= 0; a = (a + 0x6D2B79F5) | 0;
-      var t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  function logArrays(m) {
-    var N = m.N, i, j, lpi = new Array(N), lA = new Array(N), lB = new Array(N);
+
+  /** 由 seed 生成随机 HMM 参数。concentration 越大分布越均匀。 */
+  function randomModel(N, M, rng, concentration) {
+    var c = (concentration == null) ? 1 : concentration;
+    var pi = [], A = [], B = [], i, j;
+    for (i = 0; i < N; i++) pi.push(Math.pow(rng(), 1 / c) + 1e-3);
     for (i = 0; i < N; i++) {
-      lpi[i] = safelog(m.pi[i]);
-      lA[i] = new Array(N); lB[i] = new Array(m.M);
-      for (j = 0; j < N; j++) lA[i][j] = safelog(m.A[i][j]);
-      for (j = 0; j < m.M; j++) lB[i][j] = safelog(m.B[i][j]);
+      var ra = [];
+      for (j = 0; j < N; j++) ra.push(Math.pow(rng(), 1 / c) + 1e-3);
+      A.push(ra);
     }
-    return { lpi: lpi, lA: lA, lB: lB };
-  }
-
-  // ---------- 前向（对数域，抗下溢） ----------
-  function logForward(m, obs) {
-    var N = m.N, T = obs.length, L = logArrays(m), i, j, t, tmp;
-    if (T === 0) return { logalpha: [], loglik: 0 };
-    var la = new Array(T);
-    la[0] = new Array(N);
-    for (i = 0; i < N; i++) la[0][i] = L.lpi[i] + L.lB[i][obs[0]];
-    for (t = 1; t < T; t++) {
-      la[t] = new Array(N);
-      for (j = 0; j < N; j++) {
-        tmp = new Array(N);
-        for (i = 0; i < N; i++) tmp[i] = la[t - 1][i] + L.lA[i][j];
-        la[t][j] = logsumexp(tmp) + L.lB[j][obs[t]];
-      }
-    }
-    return { logalpha: la, loglik: logsumexp(la[T - 1]) };
-  }
-
-  // ---------- 后向（对数域） ----------
-  function logBackward(m, obs) {
-    var N = m.N, T = obs.length, L = logArrays(m), i, j, t, tmp;
-    if (T === 0) return { logbeta: [], loglik: 0 };
-    var lb = new Array(T);
-    lb[T - 1] = new Array(N);
-    for (i = 0; i < N; i++) lb[T - 1][i] = 0;
-    for (t = T - 2; t >= 0; t--) {
-      lb[t] = new Array(N);
-      for (i = 0; i < N; i++) {
-        tmp = new Array(N);
-        for (j = 0; j < N; j++) tmp[j] = L.lA[i][j] + L.lB[j][obs[t + 1]] + lb[t + 1][j];
-        lb[t][i] = logsumexp(tmp);
-      }
-    }
-    var ll = new Array(N);
-    for (i = 0; i < N; i++) ll[i] = L.lpi[i] + L.lB[i][obs[0]] + lb[0][i];
-    return { logbeta: lb, loglik: logsumexp(ll) };
-  }
-
-  // ---------- 前向（朴素概率域，仅用于交叉验证） ----------
-  function forward(m, obs) {
-    var N = m.N, T = obs.length, i, j, t, s, a;
-    if (T === 0) return { alpha: [], lik: 1 };
-    a = new Array(T);
-    a[0] = new Array(N);
-    for (i = 0; i < N; i++) a[0][i] = m.pi[i] * m.B[i][obs[0]];
-    for (t = 1; t < T; t++) {
-      a[t] = new Array(N);
-      for (j = 0; j < N; j++) {
-        s = 0;
-        for (i = 0; i < N; i++) s += a[t - 1][i] * m.A[i][j];
-        a[t][j] = s * m.B[j][obs[t]];
-      }
-    }
-    s = 0;
-    for (i = 0; i < N; i++) s += a[T - 1][i];
-    return { alpha: a, lik: s };
-  }
-
-  // ---------- 暴力枚举全部 N^T 条路径 ----------
-  function bruteForce(m, obs) {
-    var N = m.N, T = obs.length, i, t;
-    var sum = 0, best = -1, bestPath = null, path = new Array(T);
-    function rec(t, p) {
-      if (t === T) { sum += p; if (p > best) { best = p; bestPath = path.slice(); } return; }
-      for (var k = 0; k < N; k++) {
-        var q = p * (t === 0 ? m.pi[k] : m.A[path[t - 1]][k]) * m.B[k][obs[t]];
-        path[t] = k; rec(t + 1, q);
-      }
-    }
-    rec(0, 1);
-    return { lik: sum, bestProb: best, bestPath: bestPath };
-  }
-
-  // ---------- Viterbi（对数域） ----------
-  function viterbi(m, obs) {
-    var N = m.N, T = obs.length, L = logArrays(m), i, j, t, v, bv, bi;
-    if (T === 0) return { path: [], logprob: 0, delta: [], psi: [] };
-    var delta = new Array(T), psi = new Array(T);
-    delta[0] = new Array(N); psi[0] = new Array(N);
-    for (i = 0; i < N; i++) { delta[0][i] = L.lpi[i] + L.lB[i][obs[0]]; psi[0][i] = -1; }
-    for (t = 1; t < T; t++) {
-      delta[t] = new Array(N); psi[t] = new Array(N);
-      for (j = 0; j < N; j++) {
-        bv = -Infinity; bi = 0;
-        for (i = 0; i < N; i++) { v = delta[t - 1][i] + L.lA[i][j]; if (v > bv) { bv = v; bi = i; } }
-        delta[t][j] = bv + L.lB[j][obs[t]]; psi[t][j] = bi;
-      }
-    }
-    var last = 0, bj = -Infinity;
-    for (i = 0; i < N; i++) if (delta[T - 1][i] > bj) { bj = delta[T - 1][i]; last = i; }
-    var path = new Array(T); path[T - 1] = last;
-    for (t = T - 1; t >= 1; t--) path[t - 1] = psi[t][path[t]];
-    return { path: path, logprob: bj, delta: delta, psi: psi };
-  }
-
-  function manualPathLogProb(m, obs, path) {
-    var L = logArrays(m), T = obs.length, t;
-    if (T === 0) return 0;
-    var s = L.lpi[path[0]] + L.lB[path[0]][obs[0]];
-    for (t = 1; t < T; t++) s += L.lA[path[t - 1]][path[t]] + L.lB[path[t]][obs[t]];
-    return s;
-  }
-
-  // ---------- 后验：γ 与 ξ ----------
-  function posteriors(m, obs) {
-    var N = m.N, T = obs.length, L = logArrays(m), i, j, t;
-    if (T === 0) return { gamma: [], xi: [], loglik: 0 };
-    var F = logForward(m, obs), B = logBackward(m, obs), ll = F.loglik;
-    var gamma = new Array(T), xi = new Array(T - 1);
-    for (t = 0; t < T; t++) {
-      gamma[t] = new Array(N);
-      for (i = 0; i < N; i++) gamma[t][i] = Math.exp(F.logalpha[t][i] + B.logbeta[t][i] - ll);
-    }
-    for (t = 0; t < T - 1; t++) {
-      xi[t] = new Array(N);
-      for (i = 0; i < N; i++) {
-        xi[t][i] = new Array(N);
-        for (j = 0; j < N; j++)
-          xi[t][i][j] = Math.exp(F.logalpha[t][i] + L.lA[i][j] + L.lB[j][obs[t + 1]] + B.logbeta[t + 1][j] - ll);
-      }
-    }
-    return { gamma: gamma, xi: xi, loglik: ll };
-  }
-
-  // ---------- 模型工具 ----------
-  function normRow(v) {
-    var s = 0, i;
-    for (i = 0; i < v.length; i++) s += v[i];
-    if (s <= 0) { for (i = 0; i < v.length; i++) v[i] = 1 / v.length; return v; }
-    for (i = 0; i < v.length; i++) v[i] /= s;
-    return v;
-  }
-  function randomModel(N, M, rng) {
-    var i, j, pi = new Array(N), A = new Array(N), B = new Array(N);
-    for (i = 0; i < N; i++) pi[i] = 0.2 + rng();
-    normRow(pi);
-    for (i = 0; i < N; i++) { A[i] = new Array(N); for (j = 0; j < N; j++) A[i][j] = 0.2 + rng(); normRow(A[i]); }
-    for (i = 0; i < N; i++) { B[i] = new Array(M); for (j = 0; j < M; j++) B[i][j] = 0.2 + rng(); normRow(B[i]); }
-    return { N: N, M: M, pi: pi, A: A, B: B };
-  }
-  function cloneModel(m) {
-    var i, pi = m.pi.slice(), A = new Array(m.N), B = new Array(m.N);
-    for (i = 0; i < m.N; i++) { A[i] = m.A[i].slice(); B[i] = m.B[i].slice(); }
-    return { N: m.N, M: m.M, pi: pi, A: A, B: B };
-  }
-  function floorModel(m, f) {
-    var i, j, r = cloneModel(m);
-    for (i = 0; i < r.N; i++) {
-      if (r.pi[i] < f) r.pi[i] = f;
-      for (j = 0; j < r.N; j++) if (r.A[i][j] < f) r.A[i][j] = f;
-      for (j = 0; j < r.M; j++) if (r.B[i][j] < f) r.B[i][j] = f;
-    }
-    normRow(r.pi);
-    for (i = 0; i < r.N; i++) { normRow(r.A[i]); normRow(r.B[i]); }
-    return r;
-  }
-  function permuteModel(m, perm) {
-    var i, j, N = m.N, r = { N: N, M: m.M, pi: new Array(N), A: new Array(N), B: new Array(N) };
     for (i = 0; i < N; i++) {
-      r.pi[i] = m.pi[perm[i]];
-      r.B[i] = m.B[perm[i]].slice();
-      r.A[i] = new Array(N);
-      for (j = 0; j < N; j++) r.A[i][j] = m.A[perm[i]][perm[j]];
+      var rb = [];
+      for (j = 0; j < M; j++) rb.push(Math.pow(rng(), 1 / c) + 1e-3);
+      B.push(rb);
     }
-    return r;
+    return createModel(A, B, pi);
   }
-  function sample(m, T, rng) {
-    var i, s, u, r, cum, states = new Array(T), obs = new Array(T);
-    u = rng(); cum = 0; s = 0;
-    for (i = 0; i < m.N; i++) { cum += m.pi[i]; if (u < cum) { s = i; break; } s = m.N - 1; }
+
+  /** 从模型中采样一条 (states, observations) 序列。 */
+  function sampleSequence(model, T, rng) {
+    var N = model.N, states = new Array(T), obs = new Array(T);
+    function drawCategorical(probs) {
+      var r = rng(), acc = 0;
+      for (var i = 0; i < probs.length; i++) {
+        acc += probs[i];
+        if (r < acc) return i;
+      }
+      return probs.length - 1;
+    }
+    var s = drawCategorical(model.pi);
     for (var t = 0; t < T; t++) {
       states[t] = s;
-      u = rng(); cum = 0; obs[t] = m.M - 1;
-      for (i = 0; i < m.M; i++) { cum += m.B[s][i]; if (u < cum) { obs[t] = i; break; } }
-      if (t === T - 1) break;
-      u = rng(); cum = 0; r = m.N - 1;
-      for (i = 0; i < m.N; i++) { cum += m.A[s][i]; if (u < cum) { r = i; break; } }
-      s = r;
+      obs[t] = drawCategorical(model.B[s]);
+      s = drawCategorical(model.A[s]);
     }
-    return { states: states, obs: obs };
+    return { states: states, observations: obs };
   }
 
-  // ---------- Baum-Welch（EM） ----------
-  function baumWelch(obs, N, M, opts) {
-    opts = opts || {};
-    var iters = opts.iters || 30, tol = opts.tol || 1e-9, fl = opts.floor === undefined ? 1e-7 : opts.floor;
-    var m = opts.model ? cloneModel(opts.model) : randomModel(N, M, opts.rng || mulberry32(1));
-    var hist = [logForward(m, obs).loglik], k, i, j, t, v;
-    for (k = 0; k < iters; k++) {
-      var P = posteriors(m, obs), T = obs.length;
-      var pi = new Array(N), A = new Array(N), B = new Array(N);
-      for (i = 0; i < N; i++) pi[i] = T > 0 ? P.gamma[0][i] : 1 / N;
-      for (i = 0; i < N; i++) {
-        A[i] = new Array(N);
-        var den = 0; for (t = 0; t < T - 1; t++) den += P.gamma[t][i];
-        for (j = 0; j < N; j++) {
-          var num = 0; for (t = 0; t < T - 1; t++) num += P.xi[t][i][j];
-          A[i][j] = den > 0 ? num / den : (i === j ? 1 : 0);
+  /* ------------------------------------------------------------------
+   * 9. 自检 / self tests — 浏览器面板与 Node 无头测试共用同一套
+   * ---------------------------------------------------------------- */
+
+  function fmt(x) {
+    if (x === Infinity) return '+Infinity';
+    if (x === -Infinity) return '-Infinity';
+    if (x !== x) return 'NaN';
+    if (x === 0) return '0';
+    var a = Math.abs(x);
+    if (a < 1e-4 || a >= 1e7) return x.toExponential(3);
+    return x.toFixed(10).replace(/0+$/, '').replace(/\.$/, '');
+  }
+
+  function relErr(a, b) {
+    var d = Math.abs(a - b);
+    var scale = Math.max(1, Math.abs(a), Math.abs(b));
+    return d / scale;
+  }
+
+  function runSelfTests() {
+    var results = [];
+
+    function record(id, name, fn) {
+      var r;
+      try {
+        r = fn();
+      } catch (e) {
+        r = { pass: false, detail: 'EXCEPTION: ' + (e && e.message ? e.message : String(e)) };
+      }
+      results.push({ id: id, name: name, pass: !!r.pass, detail: r.detail || '' });
+    }
+
+    /* --- T1 logSumExp 抗下溢 ------------------------------------- */
+    record('T1', 'logSumExp 抗下溢 / underflow safety', function () {
+      var a = Math.log(1e-300), b = Math.log(2e-300), c = Math.log(3e-300);
+      var got = logSumExp([a, b, c]);
+      var want = Math.log(6e-300);
+      var e = relErr(got, want);
+      var g2 = logSumExp([NEG_INF, NEG_INF, Math.log(7)]);
+      var e2 = relErr(g2, Math.log(7));
+      return {
+        pass: e < 1e-12 && e2 < 1e-12,
+        detail: 'log(Σe^-300) = ' + fmt(got) + ' vs ' + fmt(want) +
+                ' | relerr = ' + fmt(e) +
+                ' ; with -Inf entries = ' + fmt(g2) + ' | relerr = ' + fmt(e2)
+      };
+    });
+
+    /* --- T2 前向 vs 后向 ----------------------------------------- */
+    var m2 = randomModel(4, 3, mulberry32(20260929));
+    var s2 = sampleSequence(m2, 25, mulberry32(20260930));
+    var o2 = s2.observations;
+    record('T2', '前向 vs 后向 log P(O|λ) 一致 / forward ≡ backward', function () {
+      var f = forward(m2, o2).logLikelihood;
+      var b = backward(m2, o2).logLikelihood;
+      var e = relErr(f, b);
+      return {
+        pass: e < 1e-10,
+        detail: 'forward = ' + fmt(f) + ' ; backward = ' + fmt(b) +
+                ' | abs = ' + fmt(Math.abs(f - b)) + ' | relerr = ' + fmt(e)
+      };
+    });
+
+    /* --- T3 前向 vs 暴力枚举 ------------------------------------- */
+    record('T3', '前向 vs 暴力枚举 (T=6, N=3) / forward ≡ brute force Σ', function () {
+      var m = randomModel(3, 2, mulberry32(1234));
+      var o = sampleSequence(m, 6, mulberry32(5678)).observations;
+      var f = forward(m, o).logLikelihood;
+      var bf = bruteForce(m, o).logLikelihood;
+      var e = relErr(f, bf);
+      return {
+        pass: e < 1e-10,
+        detail: 'paths = ' + Math.pow(3, 6) + ' | forward = ' + fmt(f) +
+                ' | brute = ' + fmt(bf) + ' | relerr = ' + fmt(e)
+      };
+    });
+
+    /* --- T4 α 缩放一致性 ------------------------------------------ */
+    record('T4', 'α 缩放一致性 / scaled-α per-step log-sum ≡ logSumExp', function () {
+      var m = randomModel(4, 3, mulberry32(999));
+      var o = sampleSequence(m, 40, mulberry32(1000)).observations;
+      var f = forward(m, o);          // log-space 路径
+      var fs = forwardScaled(m, o);   // 概率空间 + 逐步缩放 路径（独立实现）
+      var lastLSE = logSumExp(f.logAlpha[o.length - 1]);
+      // (a) 两条独立路径算出的 log P(O|λ) 必须一致
+      var e1 = relErr(fs.logLikelihood, lastLSE);
+      // (b) 每步: 缩放累计量 logCumScale[t] 必须等于 logSumExp(未缩放 α_t)
+      var worstStep = 0, i, t;
+      for (t = 0; t < o.length; t++) {
+        worstStep = Math.max(worstStep, Math.abs(logSumExp(f.logAlpha[t]) - fs.logCumScale[t]));
+      }
+      // (c) 缩放后每行 logSumExp(α̂_t) 必须 = 0
+      var worstScaled = 0;
+      for (t = 0; t < o.length; t++) {
+        worstScaled = Math.max(worstScaled, Math.abs(logSumExp(f.logAlphaHat[t])));
+        var sHat = 0;
+        for (i = 0; i < f.N; i++) sHat += fs.alphaHat[t][i];
+        worstScaled = Math.max(worstScaled, Math.abs(sHat - 1));
+      }
+      return {
+        pass: e1 < 1e-10 && worstStep < 1e-10 && worstScaled < 1e-10,
+        detail: 'scaled-forward LL = ' + fmt(fs.logLikelihood) +
+                ' | logSumExp(α_T-1) = ' + fmt(lastLSE) + ' | relerr = ' + fmt(e1) +
+                ' | max|logSumExp(α_t) − Σlog c| = ' + fmt(worstStep) +
+                ' | max(|logSumExp(α̂_t)|, |Σα̂_t − 1|) = ' + fmt(worstScaled)
+      };
+    });
+
+    /* --- T5 Viterbi vs 暴力最优 ------------------------------------ */
+    record('T5', 'Viterbi vs 暴力最优路径 / argmax path + logprob', function () {
+      var m = randomModel(3, 4, mulberry32(24680));
+      var o = sampleSequence(m, 6, mulberry32(13579)).observations;
+      var v = viterbi(m, o);
+      var bf = bruteForce(m, o);
+      var e = relErr(v.logProb, bf.bestLogProb);
+      var same = v.path.length === bf.bestPath.length &&
+                 v.path.every(function (x, idx) { return x === bf.bestPath[idx]; });
+      return {
+        pass: e < 1e-10 && same,
+        detail: 'viterbi logProb = ' + fmt(v.logProb) + ' | brute max = ' + fmt(bf.bestLogProb) +
+                ' | relerr = ' + fmt(e) +
+                ' | path viterbi = [' + v.path.join(',') + '] brute = [' + bf.bestPath.join(',') +
+                '] | identical = ' + (same ? 'YES' : 'NO')
+      };
+    });
+
+    /* --- T6 归一化: A/B/π 行和 = 1 -------------------------------- */
+    record('T6', '归一化 / A rows, B rows, π sum to 1', function () {
+      var m = randomModel(5, 4, mulberry32(31415));
+      var eA = rowSumError(m.A), eB = rowSumError(m.B);
+      var ePi = Math.abs(m.pi.reduce(function (a, b) { return a + b; }, 0) - 1);
+      // 再检查 EM 一步之后仍然归一
+      var o = sampleSequence(m, 60, mulberry32(27182)).observations;
+      var after = baumWelchStep(m, o).model;
+      var eA2 = rowSumError(after.A), eB2 = rowSumError(after.B);
+      var ePi2 = Math.abs(after.pi.reduce(function (a, b) { return a + b; }, 0) - 1);
+      var worst = Math.max(eA, eB, ePi, eA2, eB2, ePi2);
+      return {
+        pass: worst < 1e-12,
+        detail: 'random: |ΣA-1| = ' + fmt(eA) + ' |ΣB-1| = ' + fmt(eB) + ' |Σπ-1| = ' + fmt(ePi) +
+                ' ; after 1 EM step: ' + fmt(eA2) + ' / ' + fmt(eB2) + ' / ' + fmt(ePi2) +
+                ' | worst = ' + fmt(worst)
+      };
+    });
+
+    /* --- T7 Baum-Welch 单调性 -------------------------------------- */
+    record('T7', 'Baum-Welch 单调性 / log-likelihood non-decreasing', function () {
+      var m = randomModel(3, 4, mulberry32(7));
+      var seqs = [
+        sampleSequence(m, 120, mulberry32(11)).observations,
+        sampleSequence(m, 90, mulberry32(12)).observations
+      ];
+      var r = baumWelch(seqs, m, { maxIter: 40, tol: 0 });
+      var minDelta = Infinity, i;
+      for (i = 1; i < r.history.length; i++) {
+        var d = r.history[i] - r.history[i - 1];
+        if (d < minDelta) minDelta = d;
+      }
+      return {
+        pass: minDelta >= -1e-9,
+        detail: 'iters = ' + r.history.length + ' | LL[0] = ' + fmt(r.history[0]) +
+                ' | LL[last] = ' + fmt(r.history[r.history.length - 1]) +
+                ' | gain = ' + fmt(r.history[r.history.length - 1] - r.history[0]) +
+                ' | min Δ = ' + fmt(minDelta) + ' (tol -1e-9)'
+      };
+    });
+
+    /* --- T8 后验 gamma 每行和 = 1 ---------------------------------- */
+    record('T8', '后验归一化 / Σ_i γ_t(i) = 1 for every t', function () {
+      var m = randomModel(4, 3, mulberry32(5150));
+      var o = sampleSequence(m, 50, mulberry32(5151)).observations;
+      var g = posteriorGamma(m, o);
+      var worst = 0;
+      for (var t = 0; t < o.length; t++) {
+        var s = 0;
+        for (var i = 0; i < m.N; i++) s += g.gamma[t][i];
+        worst = Math.max(worst, Math.abs(s - 1));
+      }
+      return {
+        pass: worst < 1e-12,
+        detail: 'T = ' + o.length + ' | max|Σ_i γ_t(i) - 1| = ' + fmt(worst)
+      };
+    });
+
+    /* --- T9 长序列数值稳定 ----------------------------------------- */
+    record('T9', '长序列数值稳定 / T=300 no -Infinity / NaN', function () {
+      var m = randomModel(5, 4, mulberry32(8080));
+      var o = sampleSequence(m, 300, mulberry32(8081)).observations;
+      var f = forward(m, o), b = backward(m, o), v = viterbi(m, o);
+      var bw = baumWelchStep(m, o);
+      var vals = [f.logLikelihood, b.logLikelihood, v.logProb, bw.logLikelihood];
+      var bad = 0, finiteCount = 0, total = 0;
+      function scan(arr) {
+        for (var i = 0; i < arr.length; i++) {
+          total++;
+          if (!isFinite(arr[i])) bad++; else finiteCount++;
         }
       }
-      for (i = 0; i < N; i++) {
-        B[i] = new Array(M);
-        var d2 = 0; for (t = 0; t < T; t++) d2 += P.gamma[t][i];
-        var cnt = new Array(M); for (v = 0; v < M; v++) cnt[v] = 0;
-        for (t = 0; t < T; t++) cnt[obs[t]] += P.gamma[t][i];
-        for (v = 0; v < M; v++) B[i][v] = d2 > 0 ? cnt[v] / d2 : 1 / M;
+      for (var t = 0; t < o.length; t++) {
+        scan(f.logAlpha[t]); scan(b.logBeta[t]); scan(v.delta[t]);
       }
-      m = floorModel({ N: N, M: M, pi: pi, A: A, B: B }, fl);
-      hist.push(logForward(m, obs).loglik);
-      if (Math.abs(hist[hist.length - 1] - hist[hist.length - 2]) < tol) break;
-    }
-    return { model: m, loglikHist: hist, iters: hist.length - 1 };
+      for (var i = 0; i < vals.length; i++) {
+        total++;
+        if (!isFinite(vals[i])) bad++; else finiteCount++;
+      }
+      for (i = 0; i < m.N; i++) { scan(bw.model.A[i]); scan(bw.model.B[i]); }
+      return {
+        pass: bad === 0,
+        detail: 'T = 300, N = 5 | scanned ' + total + ' numbers | finite = ' + finiteCount +
+                ' | bad = ' + bad +
+                ' | forward LL = ' + fmt(f.logLikelihood) +
+                ' | viterbi logProb = ' + fmt(v.logProb)
+      };
+    });
+
+    /* --- T10 PRNG 确定性 ------------------------------------------- */
+    record('T10', '确定性 / same seed ⇒ bit-identical results', function () {
+      var r1 = mulberry32(42), r2 = mulberry32(42), r3 = mulberry32(43);
+      var a = [], b = [], c = [], i;
+      for (i = 0; i < 100; i++) { a.push(r1()); b.push(r2()); c.push(r3()); }
+      var identical = a.every(function (x, idx) { return x === b[idx]; });
+      var differs = a.some(function (x, idx) { return x !== c[idx]; });
+      // 端到端: 同一 seed 训练出的最终 LL 必须逐位相同
+      function pipeline(seed) {
+        var mm = randomModel(3, 3, mulberry32(seed));
+        var oo = sampleSequence(mm, 80, mulberry32(seed + 1)).observations;
+        var rr = baumWelch(oo, randomModel(3, 3, mulberry32(seed + 2)), { maxIter: 15, tol: 0 });
+        return rr.history[rr.history.length - 1];
+      }
+      var p1 = pipeline(2026), p2 = pipeline(2026);
+      var endToEnd = (p1 === p2);
+      return {
+        pass: identical && differs && endToEnd,
+        detail: 'seed 42 twice identical = ' + (identical ? 'YES' : 'NO') +
+                ' | seed 43 differs = ' + (differs ? 'YES' : 'NO') +
+                ' | end-to-end final LL = ' + fmt(p1) + ' ≡ ' + fmt(p2) +
+                ' (' + (endToEnd ? 'bit-identical' : 'MISMATCH') + ')'
+      };
+    });
+
+    /* --- T11 EM 提升似然 ------------------------------------------- */
+    record('T11', 'EM 有效性 / trained LL > initial LL', function () {
+      var truth = randomModel(3, 3, mulberry32(600));
+      var o = sampleSequence(truth, 200, mulberry32(601)).observations;
+      var init = randomModel(3, 3, mulberry32(602));
+      var r = baumWelch(o, init, { maxIter: 60, tol: 0 });
+      var ll0 = r.history[0], llN = r.history[r.history.length - 1];
+      return {
+        pass: llN > ll0,
+        detail: 'LL[0] = ' + fmt(ll0) + ' → LL[' + (r.history.length - 1) + '] = ' + fmt(llN) +
+                ' | gain = ' + fmt(llN - ll0) +
+                ' | 真值模型 LL = ' + fmt(forward(truth, o).logLikelihood)
+      };
+    });
+
+    return results;
   }
 
-  // ---------- 8 条不变量 ----------
-  function selfTest() {
-    var out = [], rng = mulberry32(20240914), i, j, t, m, obs;
-    function add(name, detail, pass) { out.push({ name: name, detail: detail, pass: !!pass }); }
+  /* ------------------------------------------------------------------
+   * 10. 导出 / exports
+   * ---------------------------------------------------------------- */
 
-    // 1 前向 == 后向
-    m = randomModel(4, 5, rng); obs = sample(m, 12, rng).obs;
-    var lf = logForward(m, obs).loglik, lb = logBackward(m, obs).loglik;
-    add('前向似然 == 后向似然（同一观测序列）', 'Δ = ' + Math.abs(lf - lb).toExponential(2), Math.abs(lf - lb) < 1e-9);
-
-    // 2 前向 == 暴力枚举 N^T
-    var m2 = randomModel(3, 4, rng), o2 = sample(m2, 7, rng).obs;
-    var f2 = forward(m2, o2).lik, b2 = bruteForce(m2, o2).lik;
-    var rel2 = Math.abs(f2 - b2) / Math.abs(b2);
-    add('前向 == 暴力枚举 3⁷=2187 条路径求和', 'rel = ' + rel2.toExponential(2), rel2 < 1e-12);
-
-    // 3 Viterbi == 暴力枚举最优
-    var v3 = viterbi(m2, o2), bf3 = bruteForce(m2, o2);
-    var rel3 = Math.abs(Math.exp(v3.logprob) - bf3.bestProb) / bf3.bestProb;
-    var same = v3.path.join(',') === bf3.bestPath.join(',');
-    // 并列最优：两条路径概率相同（1e-12 内）时，打破平局的方式允许不同
-    var tie = same || Math.abs(manualPathLogProb(m2, o2, bf3.bestPath) - v3.logprob) < 1e-9;
-    add('Viterbi == 暴力枚举最优路径（概率+路径）',
-        'rel = ' + rel3.toExponential(2) + '，' + (same ? '路径一致' : (tie ? '并列最优（平局）' : '路径不一致')),
-        rel3 < 1e-12 && tie);
-
-    // 4 路径概率重算
-    var man = manualPathLogProb(m2, o2, v3.path);
-    add('Viterbi 对数概率 == 沿路径逐项重算', 'Δ = ' + Math.abs(man - v3.logprob).toExponential(2),
-        Math.abs(man - v3.logprob) < 1e-10);
-
-    // 5 EM 单调
-    var m3 = randomModel(3, 5, rng), o3 = sample(m3, 400, rng).obs;
-    var bw = baumWelch(o3, 3, 5, { iters: 25, model: randomModel(3, 5, rng), floor: 1e-6 });
-    var minD = Infinity;
-    for (i = 1; i < bw.loglikHist.length; i++) minD = Math.min(minD, bw.loglikHist[i] - bw.loglikHist[i - 1]);
-    // 真值模型是 EM 的不动点：从真值出发跑 1 步，LL 不得下降
-    var oneStep = baumWelch(o3, 3, 5, { iters: 1, model: m3, floor: 1e-12 });
-    var dStep = oneStep.loglikHist[1] - oneStep.loglikHist[0];
-    add('Baum-Welch 对数似然单调非减（EM 定理）',
-        'min Δ = ' + minD.toExponential(2) + '（' + bw.iters + ' 轮）；真值起点 1 步 Δ = ' + dStep.toExponential(2),
-        minD > -1e-7 && dStep > -1e-9);
-
-    // 6 γ / ξ 一致性
-    var P6 = posteriors(m, obs), T6 = obs.length, eG = 0, eX = 0;
-    for (t = 0; t < T6; t++) {
-      var s1 = 0; for (i = 0; i < m.N; i++) s1 += P6.gamma[t][i];
-      eG = Math.max(eG, Math.abs(s1 - 1));
-      if (t < T6 - 1) for (i = 0; i < m.N; i++) {
-        var s2 = 0; for (j = 0; j < m.N; j++) s2 += P6.xi[t][i][j];
-        eX = Math.max(eX, Math.abs(s2 - P6.gamma[t][i]));
-      }
-    }
-    add('Σᵢ γₜ(i)=1 且 Σⱼ ξₜ(i,j)=γₜ(i)', 'maxErr(γ) = ' + eG.toExponential(2) + '，maxErr(ξ) = ' + eX.toExponential(2),
-        Math.max(eG, eX) < 1e-10);
-
-    // 7 对数域抗下溢
-    var m7 = randomModel(4, 6, rng), o7 = sample(m7, 400, rng).obs;
-    var naive7 = forward(m7, o7).lik, log7 = logForward(m7, o7).loglik;
-    var o7s = sample(m7, 10, rng).obs;
-    var d7s = Math.abs(Math.log(forward(m7, o7s).lik) - logForward(m7, o7s).loglik);
-    add('对数域 vs 朴素概率域（T=10 一致 / T=400 朴素已下溢）',
-        'T=10 Δ = ' + d7s.toExponential(2) + '；T=400 朴素 P(O) = ' + naive7.toExponential(2) +
-        '，log P(O) = ' + log7.toFixed(2),
-        d7s < 1e-9 && naive7 < 1e-300 && isFinite(log7) && log7 < 0);
-
-    // 8 标签置换不变
-    var perm = [2, 0, 3, 1], mp = permuteModel(m, perm);
-    var d8 = Math.abs(logForward(m, obs).loglik - logForward(mp, obs).loglik);
-    add('状态标签置换不变（等变性）', 'Δ = ' + d8.toExponential(2), d8 < 1e-9);
-
-    return out;
-  }
-
-  globalThis.HMM = {
-    LOGZERO: LOGZERO, logsumexp: logsumexp, mulberry32: mulberry32,
-    logForward: logForward, logBackward: logBackward, forward: forward,
-    bruteForce: bruteForce, viterbi: viterbi, manualPathLogProb: manualPathLogProb,
-    posteriors: posteriors, randomModel: randomModel, cloneModel: cloneModel,
-    permuteModel: permuteModel, floorModel: floorModel, sample: sample,
-    baumWelch: baumWelch, selfTest: selfTest
+  var HMM = {
+    version: '1.0.0',
+    author: '晨星 / Chenxing',
+    // numeric
+    safeLog: safeLog, logSumExp: logSumExp, logAdd: logAdd,
+    normalizeRows: normalizeRows, normalizeVector: normalizeVector, rowSumError: rowSumError,
+    // model
+    createModel: createModel, cloneModel: cloneModel, randomModel: randomModel,
+    // inference
+    forward: forward, forwardScaled: forwardScaled, backward: backward, viterbi: viterbi,
+    bruteForce: bruteForce, posteriorGamma: posteriorGamma, logLikelihood: logLikelihood,
+    // learning
+    baumWelchStep: baumWelchStep, baumWelch: baumWelch,
+    // random
+    mulberry32: mulberry32, sampleSequence: sampleSequence,
+    // testing
+    runSelfTests: runSelfTests, fmt: fmt, relErr: relErr
   };
-})();
+
+  root.HMM = HMM;
+
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));
 </script>
 
-<script id="ui">
+<script>
+/* =====================================================================
+ * HMM Forge — 界面层 / UI layer
+ * 只依赖 window.HMM（引擎），不引入任何外部资源。
+ * Author: 晨星 / Chenxing
+ * ===================================================================== */
 (function () {
-  if (typeof document === 'undefined') return;
-  var H = globalThis.HMM;
-  var STATES = ['Det', 'Noun', 'Verb', 'Adj', 'Adv'];
-  var COLORS = ['#2563eb', '#067647', '#b54708', '#7e22ce', '#0e7490'];
+  'use strict';
+  var H = window.HMM;
+  var $ = function (id) { return document.getElementById(id); };
 
-  var VOCAB = ['the', 'a', 'dog', 'cat', 'bird', 'runs', 'jumps', 'sings', 'big', 'small',
-               'quickly', 'slowly', 'I', 'you', 'like', 'see'];
+  var S = {
+    N: 4, M: 3, seed: 20260929,
+    model: null, obs: [], trueStates: [],
+    history: [], timer: null, training: false
+  };
 
-  function rowOf(spec, M) {
-    var r = new Array(M), i, used = 0, rest = 0, n = 0;
-    for (i = 0; i < M; i++) {
-      if (spec[i] !== undefined) { r[i] = spec[i]; used += spec[i]; } else { r[i] = -1; n++; }
+  var SYM = 'ABCDEFGH';
+  function sym(k) { return k < SYM.length ? SYM[k] : String(k); }
+  function fmt(x) {
+    if (x === Infinity) return '+Inf'; if (x === -Infinity) return '-Inf';
+    if (x !== x) return 'NaN'; if (x === 0) return '0';
+    var a = Math.abs(x);
+    if (a < 1e-4 || a >= 1e7) return x.toExponential(3);
+    return x.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+  }
+
+  /* ---------------- 参数表 ---------------- */
+  function numInput(sec, i, j, val) {
+    var inp = document.createElement('input');
+    inp.type = 'number'; inp.step = '0.01'; inp.min = '0'; inp.max = '1';
+    inp.value = (+val).toFixed(4);
+    inp.setAttribute('data-sec', sec);
+    inp.setAttribute('data-i', i);
+    if (j != null) inp.setAttribute('data-j', j);
+    inp.addEventListener('change', onParamEdit);
+    return inp;
+  }
+
+  function buildTables() {
+    var i, j;
+    // π
+    var t = $('tblPi'); t.innerHTML = '';
+    var tr = document.createElement('tr');
+    for (i = 0; i < S.N; i++) {
+      var th = document.createElement('th'); th.textContent = 'S' + i; tr.appendChild(th);
     }
-    rest = Math.max(0, 1 - used);
-    for (i = 0; i < M; i++) if (r[i] < 0) r[i] = n > 0 ? rest / n : 0;
-    return r;
-  }
-  function idx(words) { var o = {}; for (var i = 0; i < words.length; i++) o[words[i]] = i; return o; }
-  var VI = idx(VOCAB);
-
-  function buildModel() {
-    var M = VOCAB.length, N = 5;
-    var pi = [0.35, 0.25, 0.15, 0.15, 0.10];
-    var A = [
-      rowOf({ 1: 0.75, 3: 0.20, 0: 0.05 }, N),
-      rowOf({ 2: 0.50, 4: 0.20, 1: 0.15, 3: 0.10, 0: 0.05 }, N),
-      rowOf({ 4: 0.35, 1: 0.30, 0: 0.25, 2: 0.05, 3: 0.05 }, N),
-      rowOf({ 1: 0.85, 3: 0.10, 2: 0.05 }, N),
-      rowOf({ 2: 0.50, 0: 0.25, 4: 0.15, 1: 0.05, 3: 0.05 }, N)
-    ];
-    var B = [
-      rowOf({ 0: 0.45, 1: 0.45 }, M),                                  // Det
-      rowOf({ 2: 0.22, 3: 0.22, 4: 0.22, 12: 0.12, 13: 0.12 }, M),      // Noun
-      rowOf({ 5: 0.24, 6: 0.24, 7: 0.24, 14: 0.13, 15: 0.13 }, M),      // Verb
-      rowOf({ 8: 0.40, 9: 0.40 }, M),                                   // Adj
-      rowOf({ 10: 0.40, 11: 0.40 }, M)                                  // Adv
-    ];
-    return { N: N, M: M, pi: pi, A: A, B: B };
-  }
-  var TRUE = buildModel();
-
-  // 未登录词：追加一列（各状态取该行均值），再归一化
-  function withWords(m, words) {
-    var extra = [], i, k, r = H.cloneModel(m);
-    for (i = 0; i < words.length; i++) if (VI[words[i]] === undefined && extra.indexOf(words[i]) < 0) extra.push(words[i]);
-    if (!extra.length) return { model: r, vocab: VOCAB.slice() };
-    var M2 = r.M + extra.length;
-    for (i = 0; i < r.N; i++) {
-      var mean = 0; for (k = 0; k < r.M; k++) mean += r.B[i][k]; mean /= r.M;
-      var nb = r.B[i].slice();
-      for (k = 0; k < extra.length; k++) nb.push(mean);
-      var s = 0; for (k = 0; k < M2; k++) s += nb[k];
-      for (k = 0; k < M2; k++) nb[k] /= s;
-      r.B[i] = nb;
+    t.appendChild(tr);
+    tr = document.createElement('tr');
+    for (i = 0; i < S.N; i++) {
+      var td = document.createElement('td');
+      td.appendChild(numInput('pi', i, null, S.model ? S.model.pi[i] : 1 / S.N));
+      tr.appendChild(td);
     }
-    r.M = M2;
-    return { model: r, vocab: VOCAB.concat(extra) };
-  }
+    t.appendChild(tr);
 
-  var cur = null; // {model, vocab, obs, words, v, P}
-
-  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-  function f2(v) { return (v >= 0 ? '' : '') + v.toFixed(2); }
-
-  function decode() {
-    var raw = document.getElementById('sent').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    if (!raw.length) return;
-    var w = withWords(TRUE, raw), vi = idx(w.vocab);
-    var obs = raw.map(function (x) { return vi[x]; });
-    var v = H.viterbi(w.model, obs), P = H.posteriors(w.model, obs);
-    cur = { model: w.model, vocab: w.vocab, obs: obs, words: raw, v: v, P: P };
-    renderStat(); renderChips(); renderTrellis(); renderPost(); renderMatrices();
-  }
-
-  function renderStat() {
-    var ll = H.logForward(cur.model, cur.obs).loglik;
-    var lb = H.logBackward(cur.model, cur.obs).loglik;
-    document.getElementById('stat').innerHTML =
-      '<div>log P(O | λ)<b>' + ll.toFixed(4) + '</b></div>' +
-      '<div>后向校验 Δ<b>' + Math.abs(ll - lb).toExponential(1) + '</b></div>' +
-      '<div>最优路径 log P<b>' + cur.v.logprob.toFixed(4) + '</b></div>' +
-      '<div>序列长度 T<b>' + cur.obs.length + '</b></div>' +
-      '<div>状态数 N / 词表 M<b>' + cur.model.N + ' / ' + cur.model.M + '</b></div>';
-    var unk = cur.words.filter(function (x) { return VI[x] === undefined; });
-    document.getElementById('vocabnote').textContent = unk.length
-      ? '未登录词（按均匀分布追加处理）：' + unk.join('、')
-      : '全部词均在词表内。';
-  }
-
-  function renderChips() {
-    var h = '';
-    for (var t = 0; t < cur.words.length; t++) {
-      var s = cur.v.path[t];
-      h += '<div class="tok"><div class="w">' + esc(cur.words[t]) + '</div>' +
-           '<div class="s" style="background:' + COLORS[s] + '18;color:' + COLORS[s] + ';border-color:' + COLORS[s] + '55">' +
-           STATES[s] + '</div></div>';
+    // A
+    t = $('tblA'); t.innerHTML = '';
+    tr = document.createElement('tr'); tr.appendChild(document.createElement('th'));
+    for (j = 0; j < S.N; j++) { var th2 = document.createElement('th'); th2.textContent = 'S' + j; tr.appendChild(th2); }
+    t.appendChild(tr);
+    for (i = 0; i < S.N; i++) {
+      tr = document.createElement('tr');
+      var lab = document.createElement('td'); lab.className = 'lbl'; lab.textContent = 'S' + i; tr.appendChild(lab);
+      for (j = 0; j < S.N; j++) {
+        var td2 = document.createElement('td');
+        td2.appendChild(numInput('A', i, j, S.model ? S.model.A[i][j] : 1 / S.N));
+        tr.appendChild(td2);
+      }
+      t.appendChild(tr);
     }
-    document.getElementById('chips').innerHTML = h;
+
+    // B
+    t = $('tblB'); t.innerHTML = '';
+    tr = document.createElement('tr'); tr.appendChild(document.createElement('th'));
+    for (j = 0; j < S.M; j++) { var th3 = document.createElement('th'); th3.textContent = sym(j); tr.appendChild(th3); }
+    t.appendChild(tr);
+    for (i = 0; i < S.N; i++) {
+      tr = document.createElement('tr');
+      var lab2 = document.createElement('td'); lab2.className = 'lbl'; lab2.textContent = 'S' + i; tr.appendChild(lab2);
+      for (j = 0; j < S.M; j++) {
+        var td3 = document.createElement('td');
+        td3.appendChild(numInput('B', i, j, S.model ? S.model.B[i][j] : 1 / S.M));
+        tr.appendChild(td3);
+      }
+      t.appendChild(tr);
+    }
   }
 
+  function readTables() {
+    var i, j, bad = false;
+    var pi = [], A = [], B = [];
+    for (i = 0; i < S.N; i++) pi.push(1 / S.N);
+    for (i = 0; i < S.N; i++) { A.push(new Array(S.N).fill(1 / S.N)); B.push(new Array(S.M).fill(1 / S.M)); }
+    var inputs = document.querySelectorAll('input[data-sec]');
+    for (var k = 0; k < inputs.length; k++) {
+      var e = inputs[k];
+      var v = parseFloat(e.value);
+      if (!isFinite(v) || v < 0) { bad = true; continue; }
+      var sec = e.getAttribute('data-sec');
+      var ii = +e.getAttribute('data-i');
+      if (sec === 'pi') pi[ii] = v;
+      else {
+        var jj = +e.getAttribute('data-j');
+        if (sec === 'A' && jj < S.N) A[ii][jj] = v;
+        if (sec === 'B' && jj < S.M) B[ii][jj] = v;
+      }
+    }
+    if (bad) return null;
+    return H.createModel(A, B, pi);
+  }
+
+  function onParamEdit() {
+    var m = readTables();
+    if (!m) { renderAll(); return; }
+    S.model = m;
+    renderAll();
+  }
+
+  function refreshInputs() {
+    var inputs = document.querySelectorAll('input[data-sec]');
+    for (var k = 0; k < inputs.length; k++) {
+      var e = inputs[k];
+      var sec = e.getAttribute('data-sec'), i = +e.getAttribute('data-i'), j = +e.getAttribute('data-j');
+      if (document.activeElement !== e) {
+        e.value = (sec === 'pi' ? S.model.pi[i] : sec === 'A' ? S.model.A[i][j] : S.model.B[i][j]).toFixed(4);
+      }
+    }
+  }
+
+  /* ---------------- 动作 ---------------- */
+  function readDims() {
+    S.N = Math.max(1, Math.min(8, parseInt($('inN').value, 10) || 4));
+    S.M = Math.max(1, Math.min(8, parseInt($('inM').value, 10) || 3));
+    S.seed = (parseInt($('inSeed').value, 10) || 0) >>> 0;
+    $('nshow').textContent = S.N; $('mshow').textContent = S.M; $('seedshow').textContent = S.seed;
+  }
+
+  function randomize() {
+    readDims();
+    var rng = H.mulberry32(S.seed);
+    S.model = H.randomModel(S.N, S.M, rng);
+    rebuild();
+  }
+
+  function sampleObs() {
+    readDims();
+    var T = Math.max(1, Math.min(400, parseInt($('inT').value, 10) || 24));
+    var rng = H.mulberry32((S.seed + 1) >>> 0);
+    var s = H.sampleSequence(S.model, T, rng);
+    S.obs = s.observations; S.trueStates = s.states;
+    $('inObs').value = S.obs.map(sym).join(' ');
+    S.history = [];
+    renderAll();
+  }
+
+  function parseObs() {
+    var raw = $('inObs').value.trim();
+    if (!raw) { alert('请输入观测序列，例如：A B C A A B'); return; }
+    var toks = raw.split(/[\s,;]+/).filter(function (x) { return x.length; });
+    var out = [];
+    for (var i = 0; i < toks.length; i++) {
+      var tk = toks[i].toUpperCase();
+      var idx;
+      if (/^[0-9]+$/.test(tk)) idx = parseInt(tk, 10);
+      else idx = SYM.indexOf(tk[0]);
+      if (!(idx >= 0 && idx < S.M)) { alert('符号 "' + toks[i] + '" 不在 0..' + (S.M - 1) + ' 范围内'); return; }
+      out.push(idx);
+    }
+    if (!out.length) return;
+    S.obs = out; S.trueStates = []; S.history = [];
+    renderAll();
+  }
+
+  function rebuild() {
+    buildTables();
+    if (!S.obs || S.obs.length !== parseInt($('inT').value, 10) || S.obs.some(function (x) { return x >= S.M; })) {
+      var rng = H.mulberry32((S.seed + 1) >>> 0);
+      var s = H.sampleSequence(S.model, Math.max(1, Math.min(400, parseInt($('inT').value, 10) || 24)), rng);
+      S.obs = s.observations; S.trueStates = s.states;
+      $('inObs').value = S.obs.map(sym).join(' ');
+    }
+    S.history = [];
+    renderAll();
+  }
+
+  /* ---------------- Trellis ---------------- */
   function renderTrellis() {
-    var T = cur.obs.length, N = cur.model.N, d = cur.v.delta, t, i;
-    var mins = [], maxs = [];
-    for (t = 0; t < T; t++) {
-      var mn = Infinity, mx = -Infinity;
-      for (i = 0; i < N; i++) { mn = Math.min(mn, d[t][i]); mx = Math.max(mx, d[t][i]); }
-      mins.push(mn); maxs.push(mx);
-    }
-    var h = '<div class="sc" style="grid-template-columns:64px repeat(' + T + ',minmax(72px,1fr))">';
-    h += '<div></div>';
-    for (t = 0; t < T; t++) h += '<div class="h">' + esc(cur.words[t]) + '</div>';
-    for (i = 0; i < N; i++) {
-      h += '<div class="lbl" style="color:' + COLORS[i] + '">' + STATES[i] + '</div>';
-      for (t = 0; t < T; t++) {
-        var isBest = cur.v.path[t] === i;
-        var a = maxs[t] > mins[t] ? (d[t][i] - mins[t]) / (maxs[t] - mins[t]) : 1;
-        h += '<div class="cell' + (isBest ? ' best' : '') + '" style="background:' +
-             (isBest ? '#eaf1ff' : 'rgba(37,99,235,' + (0.04 + 0.10 * a).toFixed(3) + ')') + '">' +
-             f2(d[t][i]) + '</div>';
+    var svg = $('trellis');
+    if (!S.obs.length) { svg.innerHTML = ''; return; }
+    var N = S.N, T = S.obs.length;
+    var cellW = Math.max(16, Math.min(42, Math.floor(860 / Math.max(1, T))));
+    var cellH = Math.max(30, Math.min(52, Math.floor(200 / Math.max(1, N))));
+    var padL = 46, padT = 34, padB = 26;
+    var W = padL + T * cellW + 30, Hgt = padT + N * cellH + padB;
+    svg.setAttribute('width', W); svg.setAttribute('height', Hgt);
+
+    var pg = H.posteriorGamma(S.model, S.obs);
+    var v = H.viterbi(S.model, S.obs);
+    var g = '';
+
+    function X(t) { return padL + t * cellW + cellW / 2; }
+    function Y(i) { return padT + i * cellH + cellH / 2; }
+
+    // 观测符号
+    for (var t = 0; t < T; t++) {
+      g += '<text x="' + X(t) + '" y="20" fill="#f0abfc" font-size="11" font-family="monospace" text-anchor="middle">' + sym(S.obs[t]) + '</text>';
+      if (cellW >= 26 || t % 5 === 0) {
+        g += '<text x="' + X(t) + '" y="' + (Hgt - 8) + '" fill="#6b7a9c" font-size="9" font-family="monospace" text-anchor="middle">' + t + '</text>';
       }
     }
-    h += '</div>';
-    document.getElementById('trellis').innerHTML = h;
-  }
-
-  function renderPost() {
-    var T = cur.obs.length, N = cur.model.N, t, i, h = '';
-    for (t = 0; t < T; t++) {
-      h += '<div style="margin-bottom:8px"><div class="mono" style="color:var(--fg2)">t=' + t +
-           ' · <b>' + esc(cur.words[t]) + '</b></div><div class="bar">';
+    // 状态标签
+    for (var i = 0; i < N; i++) {
+      g += '<text x="8" y="' + (Y(i) + 4) + '" fill="#7dd3fc" font-size="11" font-family="monospace">S' + i + '</text>';
+      g += '<line x1="34" y1="' + Y(i) + '" x2="' + (padL + T * cellW) + '" y2="' + Y(i) + '" stroke="#1b2540" stroke-width="1"/>';
+    }
+    // 转移边
+    for (t = 0; t < T - 1; t++) {
       for (i = 0; i < N; i++) {
-        var p = cur.P.gamma[t][i];
-        h += '<i style="width:' + (p * 100).toFixed(2) + '%;background:' + COLORS[i] +
-             '" title="' + STATES[i] + ' ' + (p * 100).toFixed(1) + '%"></i>';
+        for (var j = 0; j < N; j++) {
+          var w = S.model.A[i][j];
+          if (w < 0.02) continue;
+          g += '<line x1="' + X(t) + '" y1="' + Y(i) + '" x2="' + X(t + 1) + '" y2="' + Y(j) +
+               '" stroke="#3b4a6b" stroke-width="' + (0.4 + 2.2 * w).toFixed(2) +
+               '" stroke-opacity="' + Math.min(0.85, 0.12 + w).toFixed(2) + '"/>';
+        }
       }
-      h += '</div><div class="mono" style="color:var(--fg3);font-size:11px">';
-      for (i = 0; i < N; i++) h += '<span style="color:' + COLORS[i] + '">' + STATES[i] + ' ' +
-        (cur.P.gamma[t][i] * 100).toFixed(0) + '%</span>&nbsp;&nbsp;';
-      h += '</div></div>';
     }
-    document.getElementById('post').innerHTML = h;
+    // 后验节点
+    var rMax = Math.min(cellH, cellW) * 0.38;
+    for (t = 0; t < T; t++) {
+      for (i = 0; i < N; i++) {
+        var gm = Math.max(0, Math.min(1, pg.gamma[t][i]));
+        var r = 2.2 + rMax * Math.sqrt(gm);
+        var hue = Math.round((i * 360) / Math.max(1, N));
+        var light = Math.round(88 - 46 * gm);
+        g += '<circle cx="' + X(t) + '" cy="' + Y(i) + '" r="' + r.toFixed(2) +
+             '" fill="hsl(' + hue + ',72%,' + light + '%)" fill-opacity="' + (0.35 + 0.65 * gm).toFixed(2) +
+             '" stroke="#0a1124" stroke-width="1"/>';
+      }
+    }
+    // Viterbi 路径
+    var pts = [];
+    for (t = 0; t < T; t++) pts.push(X(t) + ',' + Y(v.path[t]));
+    g += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#f0abfc" stroke-width="2.6" ' +
+         'stroke-linejoin="round" stroke-opacity="0.95"/>';
+    for (t = 0; t < T; t++) {
+      g += '<circle cx="' + X(t) + '" cy="' + Y(v.path[t]) + '" r="' + (rMax * 0.55 + 2).toFixed(2) +
+           '" fill="none" stroke="#f0abfc" stroke-width="1.8"/>';
+    }
+    svg.innerHTML = g;
+
+    // 路径统计
+    var acc = '';
+    if (S.trueStates.length === S.obs.length) {
+      var hit = 0;
+      for (t = 0; t < T; t++) if (v.path[t] === S.trueStates[t]) hit++;
+      acc = '<div class="kv">Viterbi vs 真实路径 准确率 <b>' + (100 * hit / T).toFixed(1) + '%</b> (' + hit + '/' + T + ')</div>';
+    }
+    $('pathStat').innerHTML =
+      '<div class="kv">log P(O|λ) 前向 <b>' + fmt(H.forward(S.model, S.obs).logLikelihood) + '</b></div>' +
+      '<div class="kv">log P(O|λ) 后向 <b>' + fmt(H.backward(S.model, S.obs).logLikelihood) + '</b></div>' +
+      '<div class="kv">Viterbi logProb <b>' + fmt(v.logProb) + '</b></div>' +
+      '<div class="kv">最优路径 <b>' + v.path.map(function (s) { return 'S' + s; }).join('→') + '</b></div>' +
+      acc;
   }
 
-  function heat(v) {
-    var a = Math.min(1, Math.pow(Math.max(0, v), 0.55));
-    return 'background:rgba(37,99,235,' + (0.03 + 0.55 * a).toFixed(3) + ')';
-  }
-  function matHTML(head, rowLbl, rows) {
-    var h = '<table><thead><tr><th></th>';
-    for (var j = 0; j < head.length; j++) h += '<th>' + esc(head[j]) + '</th>';
-    h += '</tr></thead><tbody>';
-    for (var i = 0; i < rows.length; i++) {
-      h += '<tr><th style="color:' + COLORS[i % COLORS.length] + '">' + esc(rowLbl[i]) + '</th>';
-      for (j = 0; j < rows[i].length; j++)
-        h += '<td class="heat" style="' + heat(rows[i][j]) + '">' + rows[i][j].toFixed(3) + '</td>';
-      h += '</tr>';
+  /* ---------------- 收敛曲线 ---------------- */
+  function renderCurve() {
+    var svg = $('curve'), h = S.history;
+    var W = 900, Hgt = 230, padL = 74, padR = 26, padT = 22, padB = 34;
+    svg.setAttribute('width', W); svg.setAttribute('height', Hgt);
+    var g = '';
+    if (!h.length) {
+      g += '<text x="' + (W / 2) + '" y="' + (Hgt / 2) + '" fill="#6b7a9c" font-size="12" text-anchor="middle">' +
+           '点击「训练 Baum-Welch」开始实时绘制收敛曲线</text>';
+      svg.innerHTML = g; return;
     }
-    return h + '</tbody></table>';
-  }
-  function renderMatrices() {
-    document.getElementById('matA').innerHTML =
-      matHTML(STATES, STATES, cur.model.A);
-    var cols = [], seen = {}, k, j;
-    for (k = 0; k < cur.words.length; k++) if (!seen[cur.words[k]]) { seen[cur.words[k]] = 1; cols.push(cur.words[k]); }
-    var vi = idx(cur.vocab), ci = cols.map(function (w) { return vi[w]; });
-    var B = cur.model.B.map(function (r) { return ci.map(function (c) { return r[c]; }); });
-    document.getElementById('matB').innerHTML = matHTML(cols, STATES, B);
-    document.getElementById('bscope').textContent = '当前句子的词（去重）';
-  }
+    var lo = Math.min.apply(null, h), hi = Math.max.apply(null, h);
+    if (hi - lo < 1e-9) { hi = lo + 1e-9; }
+    var pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
+    var n = h.length, maxX = n - 1;
+    function px(i) { return padL + (maxX === 0 ? 0.5 : i / maxX) * (W - padL - padR); }
+    function py(v) { return padT + (hi - v) / (hi - lo) * (Hgt - padT - padB); }
 
-  // ---------- Baum-Welch 演示 ----------
-  var bwRes = null, bwTrueLL = 0;
-  function runBW() {
-    var rng = H.mulberry32(777);
-    var corpus = H.sample(TRUE, 3000, rng).obs;
-    var init = H.randomModel(TRUE.N, TRUE.M, rng);
-    bwRes = H.baumWelch(corpus, TRUE.N, TRUE.M, { iters: 200, model: init, floor: 1e-6 });
-    var trueLL = H.logForward(TRUE, corpus).loglik; bwTrueLL = trueLL;
-    var h0 = bwRes.loglikHist[0], hN = bwRes.loglikHist[bwRes.loglikHist.length - 1];
-    var minD = Infinity;
-    for (var i = 1; i < bwRes.loglikHist.length; i++)
-      minD = Math.min(minD, bwRes.loglikHist[i] - bwRes.loglikHist[i - 1]);
-    document.getElementById('bwinfo').textContent =
-      '语料 T=3000，EM ' + bwRes.iters + ' 轮，log P 从 ' + h0.toFixed(1) + ' → ' + hN.toFixed(1);
-    document.getElementById('bwstat').innerHTML =
-      '<div>初始随机模型 log P(O)<b>' + h0.toFixed(2) + '</b></div>' +
-      '<div>训练后 log P(O)<b>' + hN.toFixed(2) + '</b></div>' +
-      '<div>真值模型 log P(O)<b>' + trueLL.toFixed(2) + '</b></div>' +
-      '<div>EM 单调最小 Δ<b>' + (minD > -1e-9 ? '≥ 0 ✓' : minD.toExponential(1)) + '</b></div>' +
-      '<div>与真值 LL 差距<b>' + (hN >= trueLL - 0.01 * Math.abs(trueLL)
-        ? '✓ ' + (hN - trueLL).toFixed(2) + '（&lt;1%）' : (hN - trueLL).toFixed(2)) + '</b></div>';
-    drawCurve(trueLL);
-  }
-  function drawCurve(trueLL) {
-    var cv = document.getElementById('cv'), dpr = window.devicePixelRatio || 1;
-    var W = cv.clientWidth, Hh = 170;
-    cv.width = W * dpr; cv.height = Hh * dpr;
-    var g = cv.getContext('2d'); g.scale(dpr, dpr);
-    g.clearRect(0, 0, W, Hh);
-    var hist = bwRes.loglikHist, n = hist.length;
-    var lo = Math.min.apply(null, hist.concat([trueLL])), hi = Math.max.apply(null, hist.concat([trueLL]));
-    var pad = (hi - lo) * 0.1 || 1; lo -= pad; hi += pad;
-    var L = 40, R = 10, Tp = 12, B = 24, pw = W - L - R, ph = Hh - Tp - B;
-    function X(i) { return L + pw * (n === 1 ? 0 : i / (n - 1)); }
-    function Y(v) { return Tp + ph * (1 - (v - lo) / (hi - lo)); }
-    g.strokeStyle = '#e4e7ec'; g.lineWidth = 1;
+    // 网格 + y 轴刻度
     for (var k = 0; k <= 4; k++) {
-      var y = Tp + ph * k / 4; g.beginPath(); g.moveTo(L, y); g.lineTo(W - R, y); g.stroke();
-      g.fillStyle = '#8b95a3'; g.font = '10px monospace'; g.textAlign = 'right';
-      g.fillText((hi - (hi - lo) * k / 4).toFixed(0), L - 6, y + 3);
+      var yv = lo + (hi - lo) * k / 4, yy = py(yv);
+      g += '<line x1="' + padL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yy.toFixed(1) +
+           '" stroke="#1b2540" stroke-width="1"/>';
+      g += '<text x="' + (padL - 6) + '" y="' + (yy + 3.5).toFixed(1) + '" fill="#6b7a9c" font-size="9.5" ' +
+           'font-family="monospace" text-anchor="end">' + yv.toFixed(2) + '</text>';
     }
-    g.strokeStyle = '#d92d20'; g.setLineDash([4, 4]); g.beginPath();
-    g.moveTo(L, Y(trueLL)); g.lineTo(W - R, Y(trueLL)); g.stroke(); g.setLineDash([]);
-    g.fillStyle = '#d92d20'; g.font = '10px sans-serif'; g.textAlign = 'left';
-    g.fillText('真值模型 log P(O) = ' + trueLL.toFixed(1), L + 4, Y(trueLL) - 4);
-    g.strokeStyle = '#2563eb'; g.lineWidth = 2; g.beginPath();
-    for (var i = 0; i < n; i++) { if (i === 0) g.moveTo(X(i), Y(hist[i])); else g.lineTo(X(i), Y(hist[i])); }
-    g.stroke();
-    g.fillStyle = '#2563eb';
-    for (i = 0; i < n; i += Math.max(1, Math.floor(n / 12))) { g.beginPath(); g.arc(X(i), Y(hist[i]), 2.5, 0, 6.3); g.fill(); }
-    g.fillStyle = '#5b6472'; g.font = '10px sans-serif'; g.textAlign = 'center';
-    g.fillText('EM 迭代轮次 →', L + pw / 2, Hh - 6);
+    for (var q = 0; q <= Math.min(10, maxX); q++) {
+      var xi = Math.round(q * maxX / Math.min(10, maxX)), xx = px(xi);
+      g += '<text x="' + xx.toFixed(1) + '" y="' + (Hgt - 14) + '" fill="#6b7a9c" font-size="9.5" ' +
+           'font-family="monospace" text-anchor="middle">' + xi + '</text>';
+    }
+    g += '<text x="' + (W - padR) + '" y="' + (Hgt - 2) + '" fill="#6b7a9c" font-size="9.5" text-anchor="end">EM 迭代次数</text>';
+    g += '<text x="4" y="12" fill="#6b7a9c" font-size="9.5" font-family="monospace">log P(O|λ)</text>';
+
+    var pts = [], i;
+    for (i = 0; i < n; i++) pts.push(px(i).toFixed(1) + ',' + py(h[i]).toFixed(1));
+    g += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#7dd3fc" stroke-width="2.2" stroke-linejoin="round"/>';
+    // 面积
+    g += '<polygon points="' + pts.join(' ') + ' ' + px(n - 1).toFixed(1) + ',' + (Hgt - padB) + ' ' +
+         px(0).toFixed(1) + ',' + (Hgt - padB) + '" fill="#7dd3fc" fill-opacity="0.07"/>';
+    for (i = 0; i < n; i++) {
+      g += '<circle cx="' + px(i).toFixed(1) + '" cy="' + py(h[i]).toFixed(1) + '" r="' +
+           (i === n - 1 ? 3.6 : 2) + '" fill="' + (i === n - 1 ? '#f0abfc' : '#7dd3fc') + '"/>';
+    }
+    g += '<text x="' + px(n - 1).toFixed(1) + '" y="' + (py(h[n - 1]) - 10).toFixed(1) +
+         '" fill="#f0abfc" font-size="10" font-family="monospace" text-anchor="end">' + h[n - 1].toFixed(4) + '</text>';
+    svg.innerHTML = g;
+
+    // 单调性徽标
+    var minD = Infinity;
+    for (i = 1; i < n; i++) { var d = h[i] - h[i - 1]; if (d < minD) minD = d; }
+    var badge;
+    if (n < 2) badge = '<div class="kv">迭代 <b>' + (n - 1) + '</b></div>';
+    else badge = '<div class="kv ' + (minD >= -1e-9 ? 'ok' : 'bad') + '">单调性 min Δ <b>' + fmt(minD) +
+                 '</b> ' + (minD >= -1e-9 ? '✅ 单调不减' : '❌ 出现下降') + '</div>';
+    $('bwStat').innerHTML =
+      '<div class="kv">迭代轮数 <b>' + (n - 1) + '</b></div>' +
+      '<div class="kv">LL[0] <b>' + fmt(h[0]) + '</b></div>' +
+      '<div class="kv">LL[last] <b>' + fmt(h[n - 1]) + '</b></div>' +
+      '<div class="kv">总增益 <b>' + fmt(h[n - 1] - h[0]) + '</b></div>' + badge;
   }
 
-  // ---------- 自检面板 ----------
-  function runChecks() {
-    var res = H.selfTest(), h = '', pass = 0;
-    res.forEach(function (r, i) {
-      if (r.pass) pass++;
-      h += '<tr><td class="s"><span class="' + (r.pass ? 'ok' : 'bad') + '">' + (r.pass ? 'PASS' : 'FAIL') +
-           '</span></td><td><b>' + (i + 1) + '. ' + esc(r.name) + '</b></td><td class="d">' + esc(r.detail) + '</td></tr>';
-    });
-    document.getElementById('chk').innerHTML = h;
-    document.getElementById('banner').className = 'banner' + (pass === res.length ? '' : ' bad');
-    document.getElementById('banner').textContent =
-      pass === res.length ? '全部 ' + pass + '/' + res.length + " 项不变量通过（浏览器内实时计算）"
-                          : '通过 ' + pass + '/' + res.length + ' 项，存在失败项';
+  /* ---------------- Baum-Welch 训练 ---------------- */
+  function ensureHistory() {
+    if (!S.history.length) S.history = [H.logLikelihood(S.model, [S.obs])];
   }
 
-  document.getElementById('btn-dec').onclick = decode;
-  document.getElementById('btn-sample').onclick = function () {
-    var rng = H.mulberry32((Math.random() * 1e9) | 0), s = H.sample(TRUE, 6, rng);
-    document.getElementById('sent').value = s.obs.map(function (o) { return VOCAB[o]; }).join(' ');
-    decode();
-  };
-  document.getElementById('btn-bw').onclick = function () {
-    var b = this; b.disabled = true; b.textContent = 'EM 运行中…';
-    setTimeout(function () { runBW(); b.disabled = false; b.textContent = '运行 EM（200 轮）'; }, 30);
-  };
-  Array.prototype.forEach.call(document.querySelectorAll('.pill'), function (p) {
-    p.onclick = function () { document.getElementById('sent').value = p.getAttribute('data-s'); decode(); };
+  function emStep() {
+    ensureHistory();
+    var r = H.baumWelchStep(S.model, [S.obs]);
+    S.model = r.model;
+    S.history.push(H.logLikelihood(S.model, [S.obs]));
+    refreshInputs(); renderAll();
+  }
+
+  function train() {
+    if (S.training) return;
+    if (!S.obs.length) { alert('先生成或解析观测序列'); return; }
+    var maxIter = Math.max(1, Math.min(300, parseInt($('inIter').value, 10) || 40));
+    S.history = [H.logLikelihood(S.model, [S.obs])];
+    S.training = true;
+    $('btnTrain').textContent = '⏳ 训练中…';
+    renderCurve();
+    var k = 0;
+    function tick() {
+      if (k >= maxIter) { finishTrain(); return; }
+      var r = H.baumWelchStep(S.model, [S.obs]);
+      S.model = r.model;
+      S.history.push(H.logLikelihood(S.model, [S.obs]));
+      renderCurve();
+      k++;
+      S.timer = setTimeout(tick, 40);
+    }
+    S.timer = setTimeout(tick, 40);
+  }
+
+  function finishTrain() {
+    S.training = false;
+    $('btnTrain').textContent = '▶ 训练 Baum-Welch（实时曲线）';
+    refreshInputs(); renderAll();
+  }
+
+  /* ---------------- 自检面板 ---------------- */
+  function runSelfCheck() {
+    var cases = $('cases'), sum = $('summary');
+    cases.innerHTML = '<div class="hint">运行中…</div>';
+    sum.style.display = 'none';
+    setTimeout(function () {
+      var res = H.runSelfTests();
+      var pass = 0;
+      var html = '';
+      for (var i = 0; i < res.length; i++) {
+        var r = res[i];
+        if (r.pass) pass++;
+        html += '<div class="case ' + (r.pass ? 'pass' : 'fail') + '">' +
+                '<div class="nm"><span class="mk">' + (r.pass ? '✅' : '❌') + '</span>' +
+                '<span class="id">' + r.id + '</span><span>' + r.name + '</span></div>' +
+                '<div class="dt">' + String(r.detail).replace(/</g, '&lt;') + '</div></div>';
+      }
+      cases.innerHTML = html;
+      sum.style.display = '';
+      sum.className = 'summary ' + (pass === res.length ? 'ok' : 'bad');
+      sum.textContent = (pass === res.length ? '✅ 全部通过 ' : '❌ 存在失败 ') + pass + ' / ' + res.length +
+                        ' PASS · engine v' + H.version + ' · ' + new Date().toLocaleTimeString();
+    }, 30);
+  }
+
+  /* ---------------- 汇总渲染 ---------------- */
+  function renderAll() {
+    readDims();
+    var eA = H.rowSumError(S.model.A), eB = H.rowSumError(S.model.B);
+    var ePi = Math.abs(S.model.pi.reduce(function (a, b) { return a + b; }, 0) - 1);
+    var worst = Math.max(eA, eB, ePi);
+    $('normStat').innerHTML =
+      '<div class="kv ' + (worst < 1e-12 ? 'ok' : 'bad') + '">max|Σrow−1| <b>' + fmt(worst) + '</b></div>' +
+      '<div class="kv">A 行和误差 <b>' + fmt(eA) + '</b></div>' +
+      '<div class="kv">B 行和误差 <b>' + fmt(eB) + '</b></div>' +
+      '<div class="kv">π 和误差 <b>' + fmt(ePi) + '</b></div>';
+    $('ver').textContent = 'v' + H.version;
+    renderTrellis();
+    renderCurve();
+  }
+
+  /* ---------------- 绑定 ---------------- */
+  $('btnRandom').addEventListener('click', randomize);
+  $('btnSample').addEventListener('click', sampleObs);
+  $('btnParse').addEventListener('click', parseObs);
+  $('btnTrain').addEventListener('click', train);
+  $('btnStep').addEventListener('click', emStep);
+  $('btnReset').addEventListener('click', function () { S.history = []; renderCurve(); });
+  $('btnTest').addEventListener('click', runSelfCheck);
+  ['inN', 'inM'].forEach(function (id) {
+    $(id).addEventListener('change', function () { randomize(); });
   });
-  document.getElementById('sent').addEventListener('keydown', function (e) { if (e.key === 'Enter') decode(); });
-  window.addEventListener('resize', function () { if (bwRes) drawCurve(bwTrueLL); });
+  $('inSeed').addEventListener('change', randomize);
 
-  decode();
-  runChecks();
+  /* ---------------- 启动 ---------------- */
+  $('ver').textContent = 'v' + H.version;
+  randomize();
+  runSelfCheck();
 })();
 </script>
 </body>
