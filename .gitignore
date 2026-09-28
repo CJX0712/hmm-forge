@@ -1,6 +1,3 @@
-_*.log
-_probe.txt
-_*.json
-_*_out.txt
-_tune.js
 node_modules/
+.DS_Store
+*.log
